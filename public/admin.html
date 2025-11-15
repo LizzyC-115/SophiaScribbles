@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Sophia's Scribbles</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Sophia's Scribbles</h1>
+    <p>Write & Manage Your Posts</p>
+    <div class="nav-links">
+      <a href="/">View Blog</a>
+      <a href="/admin">Admin</a>
+    </div>
+  </header>
+
+  <div class="admin-container">
+    <div id="message"></div>
+
+    <div class="upload-form">
+      <h2>Create New Post</h2>
+      <form id="blogForm">
+        <div class="form-group">
+          <label for="title">Post Title *</label>
+          <input type="text" id="title" name="title" required placeholder="Enter your post title...">
+        </div>
+
+        <div class="form-group">
+          <label for="author">Author Name</label>
+          <input type="text" id="author" name="author" placeholder="Sophia (optional)">
+        </div>
+
+        <div class="form-group">
+          <label for="excerpt">Excerpt (Optional)</label>
+          <input type="text" id="excerpt" name="excerpt" placeholder="A short preview of your post...">
+        </div>
+
+        <div class="form-group">
+          <label>Content Method</label>
+          <div style="margin-bottom: 1rem;">
+            <label style="display: inline; font-weight: normal; margin-right: 2rem;">
+              <input type="radio" name="contentMethod" value="write" checked> Write here
+            </label>
+            <label style="display: inline; font-weight: normal;">
+              <input type="radio" name="contentMethod" value="upload"> Upload markdown file
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group" id="contentArea">
+          <label for="content">Post Content (Markdown) *</label>
+          <textarea id="content" name="content" placeholder="# Your Post Title
+
+Write your post here using markdown...
+
+## Subheading
+
+You can use **bold**, *italic*, [links](https://example.com), and more!
+
+- Bullet points
+- Are supported too
+
+> Blockquotes look great!
+
+\`\`\`
+Code blocks work as well!
+\`\`\`
+"></textarea>
+        </div>
+
+        <div class="form-group" id="fileArea" style="display: none;">
+          <label for="file">Upload Markdown File</label>
+          <input type="file" id="file" name="file" accept=".md,.markdown,.txt">
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">Publish Post</button>
+      </form>
+    </div>
+
+    <div class="blog-list">
+      <h2>Manage Posts</h2>
+      <div id="blogsList">
+        <div class="loading">Loading posts...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const blogForm = document.getElementById('blogForm');
+    const messageDiv = document.getElementById('message');
+    const blogsListDiv = document.getElementById('blogsList');
+    const contentArea = document.getElementById('contentArea');
+    const fileArea = document.getElementById('fileArea');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Toggle between write and upload modes
+    document.querySelectorAll('input[name="contentMethod"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        if (e.target.value === 'write') {
+          contentArea.style.display = 'block';
+          fileArea.style.display = 'none';
+          document.getElementById('content').required = true;
+          document.getElementById('file').required = false;
+        } else {
+          contentArea.style.display = 'none';
+          fileArea.style.display = 'block';
+          document.getElementById('content').required = false;
+          document.getElementById('file').required = true;
+        }
+      });
+    });
+
+    // Show message
+    function showMessage(text, type = 'success') {
+      messageDiv.innerHTML = `<div class="message ${type}">${text}</div>`;
+      setTimeout(() => {
+        messageDiv.innerHTML = '';
+      }, 5000);
+    }
+
+    // Load all blogs for management
+    async function loadBlogsForManagement() {
+      try {
+        const response = await fetch('/api/blogs');
+        const blogs = await response.json();
+
+        if (blogs.length === 0) {
+          blogsListDiv.innerHTML = '<div class="empty-state">No posts yet. Create your first one above!</div>';
+          return;
+        }
+
+        blogsListDiv.innerHTML = '';
+        blogs.forEach(blog => {
+          const item = document.createElement('div');
+          item.className = 'blog-item';
+
+          const date = new Date(blog.date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+
+          item.innerHTML = `
+            <div class="blog-item-info">
+              <h3>${escapeHtml(blog.title)}</h3>
+              <p>By ${escapeHtml(blog.author)} • ${date}</p>
+            </div>
+            <button class="delete-btn" onclick="deleteBlog('${blog.id}', '${escapeHtml(blog.title)}')">Delete</button>
+          `;
+
+          blogsListDiv.appendChild(item);
+        });
+      } catch (error) {
+        console.error('Error loading blogs:', error);
+        blogsListDiv.innerHTML = '<div class="error">Failed to load posts.</div>';
+      }
+    }
+
+    // Delete blog
+    async function deleteBlog(id, title) {
+      if (!confirm(`Are you sure you want to delete "${title}"?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/blogs/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete');
+        }
+
+        showMessage('Post deleted successfully!', 'success');
+        loadBlogsForManagement();
+      } catch (error) {
+        console.error('Error deleting blog:', error);
+        showMessage('Failed to delete post. Please try again.', 'error');
+      }
+    }
+
+    // Make deleteBlog available globally
+    window.deleteBlog = deleteBlog;
+
+    // Handle form submission
+    blogForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(blogForm);
+      const contentMethod = formData.get('contentMethod');
+
+      // Remove contentMethod from formData
+      formData.delete('contentMethod');
+
+      // If using write mode, remove file
+      if (contentMethod === 'write') {
+        formData.delete('file');
+      } else {
+        // If using upload mode, remove content
+        formData.delete('content');
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Publishing...';
+
+      try {
+        const response = await fetch('/api/blogs', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create post');
+        }
+
+        const result = await response.json();
+        showMessage('Post published successfully!', 'success');
+        blogForm.reset();
+        loadBlogsForManagement();
+
+        // Reset to write mode
+        document.querySelector('input[name="contentMethod"][value="write"]').checked = true;
+        contentArea.style.display = 'block';
+        fileArea.style.display = 'none';
+      } catch (error) {
+        console.error('Error creating post:', error);
+        showMessage('Failed to publish post. Please try again.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Publish Post';
+      }
+    });
+
+    // Escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Initialize
+    loadBlogsForManagement();
+  </script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sophia's Scribbles - A Cozy Corner for Thoughts</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Sophia's Scribbles</h1>
+    <p>A cozy corner for thoughts, stories, and musings</p>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/admin">Write a Post</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="app">
+      <div class="loading">Loading posts...</div>
+    </div>
+  </div>
+
+  <script>
+    // Router
+    const app = document.getElementById('app');
+
+    // Get blog ID from URL
+    function getBlogIdFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('post');
+    }
+
+    // Load all blogs
+    async function loadBlogs() {
+      try {
+        const response = await fetch('/api/blogs');
+        const blogs = await response.json();
+
+        if (blogs.length === 0) {
+          app.innerHTML = `
+            <div class="empty-state">
+              <h2>No posts yet</h2>
+              <p>Check back soon for new content, or visit the <a href="/admin">admin page</a> to create your first post!</p>
+            </div>
+          `;
+          return;
+        }
+
+        const blogGrid = document.createElement('div');
+        blogGrid.className = 'blog-grid';
+
+        blogs.forEach(blog => {
+          const card = document.createElement('div');
+          card.className = 'blog-card';
+          card.onclick = () => {
+            window.location.href = `/?post=${blog.id}`;
+          };
+
+          const date = new Date(blog.date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+
+          card.innerHTML = `
+            <h2>${escapeHtml(blog.title)}</h2>
+            <div class="blog-meta">
+              <span>By ${escapeHtml(blog.author)}</span>
+              <span>${date}</span>
+            </div>
+            <p class="blog-excerpt">${escapeHtml(blog.excerpt)}</p>
+            <a href="/?post=${blog.id}" class="read-more" onclick="event.stopPropagation()">Read more →</a>
+          `;
+
+          blogGrid.appendChild(card);
+        });
+
+        app.innerHTML = '';
+        app.appendChild(blogGrid);
+      } catch (error) {
+        console.error('Error loading blogs:', error);
+        app.innerHTML = '<div class="error">Failed to load blog posts. Please try again later.</div>';
+      }
+    }
+
+    // Load single blog post
+    async function loadBlogPost(id) {
+      try {
+        const response = await fetch(`/api/blogs/${id}`);
+
+        if (!response.ok) {
+          throw new Error('Blog not found');
+        }
+
+        const blog = await response.json();
+
+        const date = new Date(blog.date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+
+        app.innerHTML = `
+          <a href="/" class="back-button">← Back to all posts</a>
+          <article class="blog-post">
+            <h1>${escapeHtml(blog.title)}</h1>
+            <div class="blog-meta">
+              <span>By ${escapeHtml(blog.author)}</span>
+              <span>${date}</span>
+            </div>
+            <div class="blog-content">
+              ${blog.content}
+            </div>
+          </article>
+        `;
+      } catch (error) {
+        console.error('Error loading blog post:', error);
+        app.innerHTML = `
+          <a href="/" class="back-button">← Back to all posts</a>
+          <div class="error">Failed to load blog post. It may have been deleted.</div>
+        `;
+      }
+    }
+
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Initialize app
+    function init() {
+      const blogId = getBlogIdFromUrl();
+
+      if (blogId) {
+        loadBlogPost(blogId);
+      } else {
+        loadBlogs();
+      }
+    }
+
+    // Handle browser back/forward
+    window.addEventListener('popstate', init);
+
+    // Start the app
+    init();
+  </script>
+</body>
+</html>
