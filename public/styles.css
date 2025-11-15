@@ -402,6 +402,83 @@ header p {
   font-style: italic;
 }
 
+/* Login Page */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+}
+
+.login-box {
+  background: white;
+  border-radius: 15px;
+  padding: 3rem;
+  box-shadow: 0 8px 25px var(--shadow);
+  border: 3px solid var(--pale-purple);
+  max-width: 450px;
+  width: 100%;
+}
+
+.login-box h2 {
+  color: var(--deep-purple);
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.login-subtitle {
+  text-align: center;
+  color: var(--text-light);
+  margin-bottom: 2rem;
+  font-style: italic;
+}
+
+.login-box .form-group {
+  margin-bottom: 1.5rem;
+}
+
+.login-box .submit-btn {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+/* Admin Header */
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.admin-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.welcome-text {
+  color: var(--deep-purple);
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.logout-btn {
+  background: var(--text-light);
+  color: white;
+  padding: 0.6rem 1.5rem;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+}
+
+.logout-btn:hover {
+  background: var(--text-dark);
+  transform: scale(1.05);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   header h1 {

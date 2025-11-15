@@ -3,9 +3,29 @@ const path = require('path');
 const fs = require('fs').promises;
 const multer = require('multer');
 const { marked } = require('marked');
+const session = require('express-session');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Admin credentials (from environment or defaults for development)
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'sophia';
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD
+  ? bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10)
+  : bcrypt.hashSync('changeme123', 10); // Default password for development
+
+// Session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key-change-this-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
 
 // Middleware
 app.use(express.json());
@@ -46,6 +66,50 @@ async function initializeStorage() {
   }
 }
 
+// Authentication middleware
+function requireAuth(req, res, next) {
+  if (req.session && req.session.isAuthenticated) {
+    return next();
+  }
+  res.status(401).json({ error: 'Unauthorized. Please log in.' });
+}
+
+// Login endpoint
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  if (username === ADMIN_USERNAME && bcrypt.compareSync(password, ADMIN_PASSWORD_HASH)) {
+    req.session.isAuthenticated = true;
+    req.session.username = username;
+    res.json({ success: true, message: 'Logged in successfully' });
+  } else {
+    res.status(401).json({ error: 'Invalid username or password' });
+  }
+});
+
+// Logout endpoint
+app.post('/api/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to logout' });
+    }
+    res.json({ success: true, message: 'Logged out successfully' });
+  });
+});
+
+// Check authentication status
+app.get('/api/auth/check', (req, res) => {
+  if (req.session && req.session.isAuthenticated) {
+    res.json({ authenticated: true, username: req.session.username });
+  } else {
+    res.json({ authenticated: false });
+  }
+});
+
 // Get all blog posts
 app.get('/api/blogs', async (req, res) => {
   try {
@@ -83,8 +147,8 @@ app.get('/api/blogs/:id', async (req, res) => {
   }
 });
 
-// Create new blog post
-app.post('/api/blogs', upload.single('file'), async (req, res) => {
+// Create new blog post (protected route)
+app.post('/api/blogs', requireAuth, upload.single('file'), async (req, res) => {
   try {
     const { title, author, excerpt } = req.body;
     let content = '';
@@ -125,8 +189,8 @@ app.post('/api/blogs', upload.single('file'), async (req, res) => {
   }
 });
 
-// Delete blog post
-app.delete('/api/blogs/:id', async (req, res) => {
+// Delete blog post (protected route)
+app.delete('/api/blogs/:id', requireAuth, async (req, res) => {
   try {
     const data = await fs.readFile('./blogs/metadata.json', 'utf-8');
     let blogs = JSON.parse(data);
@@ -152,6 +216,11 @@ app.delete('/api/blogs/:id', async (req, res) => {
 // Serve index page
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Serve login page
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 // Serve admin page
