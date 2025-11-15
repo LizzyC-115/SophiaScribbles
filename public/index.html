@@ -9,11 +9,11 @@
 <body>
   <header>
     <div class="header-container">
-      <a href="/" class="logo">Sophia's Scribbles</a>
-      <nav class="nav-tabs">
-        <a href="#home" class="active" data-page="home">Home</a>
-        <a href="#about" data-page="about">About</a>
-        <a href="#posts" data-page="posts">Posts</a>
+      <a href="/" class="logo" aria-label="Go to homepage" title="Go to homepage">Sophia's Scribbles</a>
+      <nav class="nav-tabs" aria-label="Main navigation">
+        <a href="#home" class="active" data-page="home" aria-label="Go to home page" title="Go to home page">Home</a>
+        <a href="#about" data-page="about" aria-label="Go to about page" title="Go to about page">About</a>
+        <a href="#posts" data-page="posts" aria-label="Go to posts page" title="Go to posts page">Posts</a>
       </nav>
       <div class="search-container">
         <input 
@@ -21,10 +21,11 @@
           id="searchInput" 
           class="search-input" 
           placeholder="🔍 Search posts..."
-          aria-label="Search blog posts"
+          aria-label="Search blog posts by title, excerpt, or author"
+          title="Search blog posts by title, excerpt, or author"
         >
       </div>
-      <a href="/login.html" class="admin-login-btn">🔐 Admin</a>
+      <a href="/login.html" class="admin-login-btn" aria-label="Admin login" title="Login to admin panel">🔐 Admin</a>
     </div>
   </header>
 
@@ -35,21 +36,22 @@
   </div>
 
   <!-- Newsletter Section -->
-  <section class="newsletter-section">
+  <section class="newsletter-section" aria-label="Newsletter subscription">
     <div class="newsletter-container">
       <h2>📬 Subscribe to Sophia's Newsletter</h2>
       <p>Get the latest posts and musings delivered straight to your inbox!</p>
-      <form id="newsletterForm" class="newsletter-form">
+      <form id="newsletterForm" class="newsletter-form" aria-label="Newsletter subscription form">
         <input 
           type="email" 
           id="newsletterEmail" 
           placeholder="Enter your email address..." 
           required
-          aria-label="Email address"
+          aria-label="Email address for newsletter subscription"
+          title="Enter your email to subscribe to the newsletter"
         >
-        <button type="submit" class="newsletter-btn">Subscribe</button>
+        <button type="submit" class="newsletter-btn" aria-label="Subscribe to newsletter" title="Click to subscribe to the newsletter">Subscribe</button>
       </form>
-      <div id="newsletterMessage" class="newsletter-message"></div>
+      <div id="newsletterMessage" class="newsletter-message" role="status" aria-live="polite"></div>
       <p class="newsletter-privacy">We respect your privacy. Unsubscribe at any time.</p>
     </div>
   </section>
@@ -68,44 +70,87 @@
       return params.get('post');
     }
 
+    // Sort blogs based on criteria
+    function sortBlogs(blogs, sortType) {
+      const blogsCopy = [...blogs];
+      
+      switch(sortType) {
+        case 'recent':
+          // Already sorted by date (newest first) from API
+          return blogsCopy;
+        
+        case 'az':
+          // Sort alphabetically by title
+          return blogsCopy.sort((a, b) => a.title.localeCompare(b.title));
+        
+        case 'popular':
+          // For now, sort by date as we don't have view counts
+          // In the future, this could be based on actual popularity metrics
+          return blogsCopy.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        default:
+          return blogsCopy;
+      }
+    }
+
     // Load all blogs
-    async function loadBlogs(skipFetch = false) {
+    async function loadBlogs() {
       try {
-        // Fetch blogs if not already loaded or if forced
-        if (!skipFetch || allBlogs.length === 0) {
-          const response = await fetch('/api/blogs');
-          allBlogs = await response.json();
-        }
+        app.innerHTML = '<div class="loading">Loading posts...</div>';
+        const response = await fetch('/api/blogs');
+        const blogs = await response.json();
+        
+        // Store all blogs for searching
+        allBlogs = blogs;
 
         // Filter blogs based on search query
-        let filteredBlogs = allBlogs;
-        if (searchQuery.trim()) {
-          const query = searchQuery.toLowerCase();
-          filteredBlogs = allBlogs.filter(blog => 
-            blog.title.toLowerCase().includes(query) || 
-            blog.excerpt.toLowerCase().includes(query) ||
-            blog.author.toLowerCase().includes(query)
-          );
-        }
+        let filteredBlogs = searchQuery 
+          ? blogs.filter(blog => 
+              blog.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              blog.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              blog.author.toLowerCase().includes(searchQuery.toLowerCase())
+            )
+          : blogs;
+
+        // Get current sort preference from localStorage or default to 'recent'
+        const currentSort = localStorage.getItem('postSort') || 'recent';
+
+        // Sort blogs based on selection
+        filteredBlogs = sortBlogs(filteredBlogs, currentSort);
 
         if (filteredBlogs.length === 0) {
-          if (searchQuery.trim()) {
-            app.innerHTML = `
-              <div class="empty-state">
-                <h2>No posts found</h2>
-                <p>No posts match your search for "${escapeHtml(searchQuery)}". Try a different search term.</p>
-              </div>
-            `;
-          } else {
-            app.innerHTML = `
-              <div class="empty-state">
-                <h2>No posts yet</h2>
-                <p>Check back soon for new content, or visit the <a href="/admin">admin page</a> to create your first post!</p>
-              </div>
-            `;
-          }
+          app.innerHTML = `
+            <div style="text-align: center; padding: 3rem; color: var(--text-light);">
+              <h2 style="color: var(--deep-purple); margin-bottom: 1rem;">No posts found</h2>
+              <p>${searchQuery ? `No posts match "${searchQuery}"` : 'No blog posts available yet.'}</p>
+            </div>
+          `;
           return;
         }
+
+        // Create header with sort dropdown
+        const headerDiv = document.createElement('div');
+        headerDiv.style.display = 'flex';
+        headerDiv.style.justifyContent = 'space-between';
+        headerDiv.style.alignItems = 'center';
+        headerDiv.style.marginBottom = '2rem';
+        headerDiv.style.flexWrap = 'wrap';
+        headerDiv.style.gap = '1rem';
+        
+        headerDiv.innerHTML = `
+          <h2 style="color: var(--deep-purple); font-size: 2rem; margin: 0;">All Posts</h2>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <label for="sortSelect" style="color: var(--text-light); font-weight: 600;">Sort by:</label>
+            <select id="sortSelect" 
+              style="padding: 0.5rem 1rem; border: 2px solid var(--light-purple); border-radius: 8px; background: white; color: var(--deep-purple); font-weight: 600; cursor: pointer; font-size: 1rem;"
+              aria-label="Sort posts by"
+              title="Choose how to sort posts">
+              <option value="recent" ${currentSort === 'recent' ? 'selected' : ''}>Most Recent</option>
+              <option value="az" ${currentSort === 'az' ? 'selected' : ''}>A-Z</option>
+              <option value="popular" ${currentSort === 'popular' ? 'selected' : ''}>Most Popular</option>
+            </select>
+          </div>
+        `;
 
         const blogGrid = document.createElement('div');
         blogGrid.className = 'blog-grid';
@@ -138,10 +183,12 @@
           searchInfo.appendChild(clearBtn);
           
           app.innerHTML = '';
+          app.appendChild(headerDiv);
           app.appendChild(searchInfo);
           app.appendChild(blogGrid);
         } else {
           app.innerHTML = '';
+          app.appendChild(headerDiv);
           app.appendChild(blogGrid);
         }
 
@@ -166,16 +213,24 @@
             </div>
             <p class="blog-excerpt">${escapeHtml(blog.excerpt)}</p>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <a href="/?post=${blog.id}" class="read-more" onclick="event.stopPropagation()">Read more →</a>
-              ${isAdmin ? `<button onclick="event.stopPropagation(); window.location.href='/?post=${blog.id}&edit=true'" style="padding: 0.5rem 1rem; background: var(--primary-purple); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">✏️ Edit</button>` : ''}
+              <a href="/?post=${blog.id}" class="read-more" onclick="event.stopPropagation()" aria-label="Read full post: ${escapeHtml(blog.title)}" title="Read the full post">Read more →</a>
+              ${isAdmin ? `<button onclick="event.stopPropagation(); window.location.href='/?post=${blog.id}&edit=true'" style="padding: 0.5rem 1rem; background: var(--primary-purple); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" aria-label="Edit post: ${escapeHtml(blog.title)}" title="Edit this post">✏️ Edit</button>` : ''}
             </div>
           `;
 
           blogGrid.appendChild(card);
         });
 
-        app.innerHTML = '';
-        app.appendChild(blogGrid);
+        // Add event listener for sort dropdown
+        setTimeout(() => {
+          const sortSelect = document.getElementById('sortSelect');
+          if (sortSelect) {
+            sortSelect.addEventListener('change', (e) => {
+              localStorage.setItem('postSort', e.target.value);
+              loadBlogs();
+            });
+          }
+        }, 0);
       } catch (error) {
         console.error('Error loading blogs:', error);
         app.innerHTML = '<div class="error">Failed to load blog posts. Please try again later.</div>';
@@ -210,34 +265,60 @@
 
           // Show edit form
           app.innerHTML = `
-            <a href="#posts" class="back-button" id="backToPostsBtn">← Back to all posts</a>
+            <a href="#posts" class="back-button" id="backToPostsBtn" aria-label="Go back to all posts" title="Return to posts list">← Back to all posts</a>
             <article class="blog-post">
               <h1 style="color: var(--deep-purple); margin-bottom: 2rem;">✏️ Edit Post</h1>
+              
+              <!-- Image Upload Section -->
+              <div style="background: var(--pale-purple); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;" role="region" aria-label="Image upload section">
+                <h3 style="color: var(--deep-purple); margin-bottom: 1rem;">📷 Upload Image</h3>
+                <p style="color: var(--text-light); margin-bottom: 1rem; font-size: 0.9rem;">Upload an image and copy the markdown code to insert it into your post content.</p>
+                <div style="display: flex; gap: 1rem; align-items: end; flex-wrap: wrap;">
+                  <div style="flex: 1; min-width: 200px;">
+                    <input type="file" id="editImageUpload" accept="image/*" 
+                      style="width: 100%; padding: 0.5rem; border: 2px solid var(--light-purple); border-radius: 8px; background: white;"
+                      aria-label="Choose image file to upload"
+                      title="Select an image file (max 5MB)">
+                  </div>
+                  <button type="button" id="editUploadImageBtn" class="submit-btn" style="padding: 0.75rem 1.5rem;" aria-label="Upload selected image" title="Upload the selected image">Upload Image</button>
+                </div>
+                <div id="editImageMessage" style="margin-top: 1rem;"></div>
+                <div id="editUploadedImages" style="margin-top: 1rem;"></div>
+              </div>
+
               <form id="editPostForm" style="display: flex; flex-direction: column; gap: 1.5rem;">
                 <div>
-                  <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Title</label>
+                  <label for="editTitle" style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Title</label>
                   <input type="text" id="editTitle" value="${escapeHtml(blog.title)}" required
-                    style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1.1rem;">
+                    style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1.1rem;"
+                    aria-label="Post title"
+                    title="Enter the post title">
                 </div>
                 <div>
-                  <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Author</label>
+                  <label for="editAuthor" style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Author</label>
                   <input type="text" id="editAuthor" value="${escapeHtml(blog.author)}"
-                    style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1rem;">
+                    style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1rem;"
+                    aria-label="Post author name"
+                    title="Enter the author name">
                 </div>
                 <div>
-                  <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Excerpt (Optional)</label>
+                  <label for="editExcerpt" style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Excerpt (Optional)</label>
                   <input type="text" id="editExcerpt" value="${escapeHtml(blog.excerpt)}"
-                    style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1rem;">
+                    style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1rem;"
+                    aria-label="Post excerpt or summary"
+                    title="Enter a short excerpt or summary">
                 </div>
                 <div>
-                  <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Content (Markdown)</label>
+                  <label for="editContent" style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Content (Markdown)</label>
                   <textarea id="editContent" required
-                    style="width: 100%; min-height: 400px; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1rem; font-family: 'Courier New', monospace;">${escapeHtml(blog.rawContent)}</textarea>
+                    style="width: 100%; min-height: 400px; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1rem; font-family: 'Courier New', monospace;"
+                    aria-label="Post content in markdown format"
+                    title="Enter the post content using markdown syntax">${escapeHtml(blog.rawContent)}</textarea>
                 </div>
-                <div id="editMessage" style="padding: 1rem; border-radius: 8px; display: none;"></div>
+                <div id="editMessage" style="padding: 1rem; border-radius: 8px; display: none;" role="status" aria-live="polite"></div>
                 <div style="display: flex; gap: 1rem;">
-                  <button type="submit" class="submit-btn" id="saveEditBtn">Save Changes</button>
-                  <button type="button" class="back-button" id="cancelEditBtn" style="padding: 1rem 2.5rem;">Cancel</button>
+                  <button type="submit" class="submit-btn" id="saveEditBtn" aria-label="Save changes to post" title="Save all changes to this post">Save Changes</button>
+                  <button type="button" class="back-button" id="cancelEditBtn" style="padding: 1rem 2.5rem;" aria-label="Cancel editing" title="Cancel editing and return to posts">Cancel</button>
                 </div>
               </form>
             </article>
@@ -293,6 +374,81 @@
             }
           });
 
+          // Handle image upload in edit mode
+          document.getElementById('editUploadImageBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('editImageUpload');
+            const file = fileInput.files[0];
+            const messageDiv = document.getElementById('editImageMessage');
+            const uploadedImagesDiv = document.getElementById('editUploadedImages');
+            const uploadBtn = document.getElementById('editUploadImageBtn');
+            
+            if (!file) {
+              messageDiv.innerHTML = '<div style="padding: 0.75rem; background: #f8d7da; color: #721c24; border-radius: 6px; border: 2px solid #f5c6cb;">Please select an image file</div>';
+              return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+              messageDiv.innerHTML = '<div style="padding: 0.75rem; background: #f8d7da; color: #721c24; border-radius: 6px; border: 2px solid #f5c6cb;">Image size must be less than 5MB</div>';
+              return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            messageDiv.innerHTML = '';
+
+            try {
+              const response = await fetch('/api/upload-image', {
+                method: 'POST',
+                body: formData
+              });
+
+              const data = await response.json();
+
+              if (response.ok) {
+                messageDiv.innerHTML = '<div style="padding: 0.75rem; background: #d4edda; color: #155724; border-radius: 6px; border: 2px solid #c3e6cb;">✓ Image uploaded successfully!</div>';
+                
+                // Display uploaded image with markdown code
+                const imageCard = document.createElement('div');
+                imageCard.style.padding = '1rem';
+                imageCard.style.background = 'white';
+                imageCard.style.borderRadius = '8px';
+                imageCard.style.marginTop = '1rem';
+                imageCard.innerHTML = `
+                  <img src="${data.url}" alt="Uploaded" style="max-width: 200px; border-radius: 8px; margin-bottom: 0.5rem;">
+                  <div style="margin-bottom: 0.5rem;">
+                    <strong>Markdown code:</strong>
+                  </div>
+                  <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="text" value="${data.markdown}" readonly 
+                      style="flex: 1; padding: 0.5rem; border: 2px solid var(--light-purple); border-radius: 4px; font-family: monospace; font-size: 0.9rem;">
+                    <button onclick="navigator.clipboard.writeText('${data.markdown}').then(() => alert('Copied to clipboard!'))" 
+                      style="padding: 0.5rem 1rem; background: var(--deep-purple); color: white; border: none; border-radius: 4px; cursor: pointer;">
+                      Copy
+                    </button>
+                  </div>
+                  <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
+                    Paste this code into the Content field above to display the image.
+                  </p>
+                `;
+                
+                uploadedImagesDiv.innerHTML = '';
+                uploadedImagesDiv.appendChild(imageCard);
+                fileInput.value = '';
+              } else {
+                messageDiv.innerHTML = `<div style="padding: 0.75rem; background: #f8d7da; color: #721c24; border-radius: 6px; border: 2px solid #f5c6cb;">${data.error || 'Failed to upload image'}</div>`;
+              }
+            } catch (error) {
+              console.error('Image upload error:', error);
+              messageDiv.innerHTML = '<div style="padding: 0.75rem; background: #f8d7da; color: #721c24; border-radius: 6px; border: 2px solid #f5c6cb;">Failed to upload image. Please try again.</div>';
+            } finally {
+              uploadBtn.disabled = false;
+              uploadBtn.textContent = 'Upload Image';
+            }
+          });
+
           // Handle form submission
           document.getElementById('editPostForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -301,11 +457,11 @@
         } else {
           // Show normal post view
           app.innerHTML = `
-            <a href="#posts" class="back-button">← Back to all posts</a>
-            <article class="blog-post">
+            <a href="#posts" class="back-button" onclick="event.preventDefault(); window.history.pushState({}, '', '/#posts'); currentPage = 'posts'; loadBlogs(); updateActiveTab();" aria-label="Go back to all posts" title="Return to posts list">← Back to all posts</a>
+            <article class="blog-post" role="article">
               <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
                 <h1>${escapeHtml(blog.title)}</h1>
-                ${isAdmin ? `<button onclick="loadBlogPost('${id}', true)" style="padding: 0.6rem 1.2rem; background: var(--primary-purple); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">✏️ Edit Post</button>` : ''}
+                ${isAdmin ? `<button onclick="loadBlogPost('${id}', true)" style="padding: 0.6rem 1.2rem; background: var(--primary-purple); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;" aria-label="Edit this post" title="Edit this post">✏️ Edit Post</button>` : ''}
               </div>
               <div class="blog-meta">
                 <span>By ${escapeHtml(blog.author)}</span>
@@ -320,7 +476,7 @@
       } catch (error) {
         console.error('Error loading blog post:', error);
         app.innerHTML = `
-          <a href="#posts" class="back-button">← Back to all posts</a>
+          <a href="#posts" class="back-button" onclick="event.preventDefault(); window.history.pushState({}, '', '/#posts'); currentPage = 'posts'; loadBlogs(); updateActiveTab();">← Back to all posts</a>
           <div class="error">Failed to load blog post. It may have been deleted.</div>
         `;
       }
@@ -388,14 +544,69 @@
       return div.innerHTML;
     }
 
-    // Load home page (blank for now)
-    function loadHome() {
-      app.innerHTML = `
-        <div style="text-align: center; padding: 4rem 2rem; color: var(--text-light);">
-          <h2 style="font-size: 2.5rem; color: var(--deep-purple); margin-bottom: 1rem;">Welcome to Sophia's Scribbles</h2>
-          <p style="font-size: 1.2rem; font-style: italic;">A cozy corner for thoughts, stories, and musings</p>
-        </div>
-      `;
+    // Load home page with latest posts
+    async function loadHome() {
+      try {
+        // Fetch all blogs to get the latest 3
+        const response = await fetch('/api/blogs');
+        const blogs = await response.json();
+        const latestBlogs = blogs.slice(0, 3); // Get first 3 (already sorted by date)
+
+        let latestPostsHTML = '';
+        if (latestBlogs.length > 0) {
+          latestPostsHTML = `
+            <section style="margin-top: 3rem;">
+              <h2 style="font-size: 2rem; color: var(--deep-purple); margin-bottom: 1rem; text-align: center;">Latest Posts</h2>
+              <hr style="border: none; border-top: 2px solid var(--light-purple); max-width: 200px; margin: 0 auto 2rem;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; max-width: 1200px; margin: 0 auto;">
+                ${latestBlogs.map(blog => {
+                  const date = new Date(blog.date).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  });
+                  return `
+                    <article class="blog-card" onclick="window.location.href='/?post=${blog.id}'" style="cursor: pointer;" role="article">
+                      <h3 style="color: var(--deep-purple); margin-bottom: 0.75rem; font-size: 1.3rem;">${escapeHtml(blog.title)}</h3>
+                      <div class="blog-meta" style="margin-bottom: 1rem;">
+                        <span>By ${escapeHtml(blog.author)}</span>
+                        <span>${date}</span>
+                      </div>
+                      <p class="blog-excerpt" style="margin-bottom: 1rem;">${escapeHtml(blog.excerpt)}</p>
+                      <a href="/?post=${blog.id}" class="read-more" onclick="event.stopPropagation()" aria-label="Read full post: ${escapeHtml(blog.title)}" title="Read the full post">Read more →</a>
+                    </article>
+                  `;
+                }).join('')}
+              </div>
+              <div style="text-align: center; margin-top: 2rem;">
+                <a href="#posts" style="display: inline-block; padding: 1rem 2rem; background: var(--primary-purple); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: all 0.3s ease;" 
+                  onmouseover="this.style.background='var(--deep-purple)'" 
+                  onmouseout="this.style.background='var(--primary-purple)'"
+                  aria-label="View all posts"
+                  title="View all blog posts">
+                  View All Posts →
+                </a>
+              </div>
+            </section>
+          `;
+        }
+
+        app.innerHTML = `
+          <div style="text-align: center; padding: 4rem 2rem 2rem; color: var(--text-light);">
+            <h1 style="font-size: 2.5rem; color: var(--deep-purple); margin-bottom: 1rem;">Welcome to Sophia's Scribbles</h1>
+            <p style="font-size: 1.2rem; font-style: italic;">A cozy corner for thoughts, stories, and musings</p>
+          </div>
+          ${latestPostsHTML}
+        `;
+      } catch (error) {
+        console.error('Error loading home page:', error);
+        app.innerHTML = `
+          <div style="text-align: center; padding: 4rem 2rem; color: var(--text-light);">
+            <h1 style="font-size: 2.5rem; color: var(--deep-purple); margin-bottom: 1rem;">Welcome to Sophia's Scribbles</h1>
+            <p style="font-size: 1.2rem; font-style: italic;">A cozy corner for thoughts, stories, and musings</p>
+          </div>
+        `;
+      }
     }
 
     // Load about page
@@ -467,9 +678,10 @@
     // Update active tab based on current page
     function updateActiveTab() {
       const hash = window.location.hash.slice(1) || 'home';
+      const pageToHighlight = currentPage || hash;
       document.querySelectorAll('.nav-tabs a').forEach(a => {
         a.classList.remove('active');
-        if (a.getAttribute('data-page') === hash) {
+        if (a.getAttribute('data-page') === pageToHighlight) {
           a.classList.add('active');
         }
       });

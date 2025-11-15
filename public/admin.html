@@ -9,11 +9,11 @@
 <body>
   <header>
     <div class="header-container">
-      <a href="/" class="logo">Sophia's Scribbles</a>
-      <nav class="nav-tabs">
-        <a href="/">Home</a>
-        <a href="#about">About</a>
-        <a href="#posts">Posts</a>
+      <a href="/" class="logo" aria-label="Go to homepage" title="Go to homepage">Sophia's Scribbles</a>
+      <nav class="nav-tabs" aria-label="Main navigation">
+        <a href="/" aria-label="Go to home page" title="Go to home page">Home</a>
+        <a href="/#about" aria-label="Go to about page" title="Go to about page">About</a>
+        <a href="/#posts" aria-label="Go to posts page" title="Go to posts page">Posts</a>
       </nav>
       <div class="search-container">
         <input 
@@ -23,9 +23,10 @@
           disabled
           style="opacity: 0.5; cursor: not-allowed;"
           title="Search available on main site"
+          aria-label="Search disabled in admin panel"
         >
       </div>
-      <button id="logoutBtn" class="admin-login-btn" style="background: rgba(220, 38, 38, 0.9); border-color: rgba(220, 38, 38, 0.5);">Logout</button>
+      <button id="logoutBtn" class="admin-login-btn" style="background: rgba(220, 38, 38, 0.9); border-color: rgba(220, 38, 38, 0.5);" aria-label="Logout from admin panel" title="Click to logout">Logout</button>
     </div>
   </header>
 
@@ -34,10 +35,12 @@
 
     <div class="upload-form">
       <h2>✏️ Edit About Page</h2>
-      <form id="aboutForm">
+      <form id="aboutForm" aria-label="Edit about page form">
         <div class="form-group">
           <label for="aboutTitle">Page Title</label>
-          <input type="text" id="aboutTitle" name="title" required placeholder="About Sophia">
+          <input type="text" id="aboutTitle" name="title" required placeholder="About Sophia"
+            aria-label="About page title"
+            title="Enter the title for the about page">
         </div>
 
         <div class="form-group">
@@ -48,10 +51,12 @@ Write about yourself here using markdown...
 
 ## Section Heading
 
-You can use **bold**, *italic*, [links](https://example.com), and more!"></textarea>
+You can use **bold**, *italic*, [links](https://example.com), and more!"
+            aria-label="About page content in markdown format"
+            title="Enter the about page content using markdown syntax"></textarea>
         </div>
 
-        <button type="submit" class="submit-btn" id="aboutSubmitBtn">Update About Page</button>
+        <button type="submit" class="submit-btn" id="aboutSubmitBtn" aria-label="Update about page" title="Save changes to the about page">Update About Page</button>
       </form>
     </div>
 
@@ -61,8 +66,10 @@ You can use **bold**, *italic*, [links](https://example.com), and more!"></texta
       
       <div class="form-group">
         <label for="imageUpload">Choose Image (Max 5MB)</label>
-        <input type="file" id="imageUpload" accept="image/*">
-        <button type="button" class="submit-btn" id="uploadImageBtn" style="margin-top: 1rem;">Upload Image</button>
+        <input type="file" id="imageUpload" accept="image/*"
+          aria-label="Choose image file to upload"
+          title="Select an image file (max 5MB)">
+        <button type="button" class="submit-btn" id="uploadImageBtn" style="margin-top: 1rem;" aria-label="Upload selected image" title="Upload the selected image to use in posts">Upload Image</button>
       </div>
 
       <div id="imageUploadMessage" style="margin-top: 1rem;"></div>

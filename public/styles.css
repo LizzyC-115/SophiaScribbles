@@ -608,6 +608,17 @@ header {
   font-style: italic;
 }
 
+/* Sort dropdown styles */
+select:hover {
+  border-color: var(--primary-purple);
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--deep-purple);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .header-container {

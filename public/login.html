@@ -104,11 +104,11 @@
 <body>
   <header>
     <div class="header-container">
-      <a href="/" class="logo">Sophia's Scribbles</a>
-      <nav class="nav-tabs">
-        <a href="/">Home</a>
-        <a href="#about">About</a>
-        <a href="#posts">Posts</a>
+      <a href="/" class="logo" aria-label="Go to homepage" title="Go to homepage">Sophia's Scribbles</a>
+      <nav class="nav-tabs" aria-label="Main navigation">
+        <a href="/" aria-label="Go to home page" title="Go to home page">Home</a>
+        <a href="/#about" aria-label="Go to about page" title="Go to about page">About</a>
+        <a href="/#posts" aria-label="Go to posts page" title="Go to posts page">Posts</a>
       </nav>
       <div class="search-container">
         <input 
@@ -118,9 +118,10 @@
           disabled
           style="opacity: 0.5; cursor: not-allowed;"
           title="Search available on main site"
+          aria-label="Search disabled on login page"
         >
       </div>
-      <span class="admin-login-btn" style="opacity: 0.5; cursor: default;">🔐 Admin</span>
+      <span class="admin-login-btn" style="opacity: 0.5; cursor: default;" aria-label="Currently on admin login page" title="You are on the admin login page">🔐 Admin</span>
     </div>
   </header>
 
@@ -128,18 +129,24 @@
     <h2>🔐 Admin Access</h2>
     <div id="errorMessage" class="error-message"></div>
     
-    <form id="loginForm" class="login-form">
+    <form id="loginForm" class="login-form" aria-label="Admin login form">
       <div class="form-group">
         <label for="username">Username</label>
-        <input type="text" id="username" name="username" required autocomplete="username">
+        <input type="text" id="username" name="username" required
+          aria-label="Enter admin username"
+          title="Enter your admin username"
+          autocomplete="username">
       </div>
-
+      
       <div class="form-group">
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" required autocomplete="current-password">
+        <input type="password" id="password" name="password" required
+          aria-label="Enter admin password"
+          title="Enter your admin password"
+          autocomplete="current-password">
       </div>
-
-      <button type="submit" class="login-btn" id="loginBtn">Login</button>
+      
+      <button type="submit" class="login-btn" aria-label="Login to admin panel" title="Click to login">Login</button>
     </form>
 
     <div class="back-link">
