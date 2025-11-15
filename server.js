@@ -1,4 +1,6 @@
+require('dotenv').config();
 const express = require('express');
+const session = require('express-session');
 const path = require('path');
 const fs = require('fs').promises;
 const multer = require('multer');
@@ -10,6 +12,15 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key-change-this',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    secure: false, // Set to true if using HTTPS
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
 app.use(express.static('public'));
 
 // Storage for file uploads
@@ -31,6 +42,22 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// Authentication middleware
+function requireAuth(req, res, next) {
+  if (req.session && req.session.isAdmin) {
+    return next();
+  }
+  res.status(401).json({ error: 'Unauthorized. Please log in.' });
+}
+
+// Check if user is authenticated
+function isAuthenticated(req, res, next) {
+  if (req.session && req.session.isAdmin) {
+    return next();
+  }
+  res.redirect('/login.html');
+}
+
 // Ensure blogs directory and metadata file exist
 async function initializeStorage() {
   try {
@@ -43,6 +70,22 @@ async function initializeStorage() {
     await fs.access('./blogs/metadata.json');
   } catch {
     await fs.writeFile('./blogs/metadata.json', JSON.stringify([], null, 2));
+  }
+
+  try {
+    await fs.access('./newsletter-subscribers.json');
+  } catch {
+    await fs.writeFile('./newsletter-subscribers.json', JSON.stringify([], null, 2));
+  }
+
+  try {
+    await fs.access('./about.json');
+  } catch {
+    const defaultAbout = {
+      title: "About Sophia",
+      content: "# About Me\n\nWelcome to my cozy corner of the internet! I'm Sophia, and this is where I share my thoughts, stories, and musings.\n\n## Who I Am\n\nI'm a writer, dreamer, and lover of all things creative. This blog is my space to explore ideas, share experiences, and connect with wonderful people like you.\n\n## What You'll Find Here\n\nOn this blog, I write about:\n- Life's little moments\n- Creative inspiration\n- Personal growth\n- And whatever else captures my imagination\n\n## Let's Connect\n\nI'd love to hear from you! Subscribe to my newsletter below to stay updated on new posts.\n\nThank you for being here. ✨"
+    };
+    await fs.writeFile('./about.json', JSON.stringify(defaultAbout, null, 2));
   }
 }
 
@@ -83,8 +126,40 @@ app.get('/api/blogs/:id', async (req, res) => {
   }
 });
 
-// Create new blog post
-app.post('/api/blogs', upload.single('file'), async (req, res) => {
+// Login endpoint
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  
+  if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+    req.session.isAdmin = true;
+    req.session.username = username;
+    res.json({ success: true, message: 'Login successful' });
+  } else {
+    res.status(401).json({ success: false, error: 'Invalid credentials' });
+  }
+});
+
+// Logout endpoint
+app.post('/api/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to logout' });
+    }
+    res.json({ success: true, message: 'Logged out successfully' });
+  });
+});
+
+// Check authentication status
+app.get('/api/auth/status', (req, res) => {
+  if (req.session && req.session.isAdmin) {
+    res.json({ authenticated: true, username: req.session.username });
+  } else {
+    res.json({ authenticated: false });
+  }
+});
+
+// Create new blog post (PROTECTED)
+app.post('/api/blogs', requireAuth, upload.single('file'), async (req, res) => {
   try {
     const { title, author, excerpt } = req.body;
     let content = '';
@@ -125,8 +200,8 @@ app.post('/api/blogs', upload.single('file'), async (req, res) => {
   }
 });
 
-// Delete blog post
-app.delete('/api/blogs/:id', async (req, res) => {
+// Delete blog post (PROTECTED)
+app.delete('/api/blogs/:id', requireAuth, async (req, res) => {
   try {
     const data = await fs.readFile('./blogs/metadata.json', 'utf-8');
     let blogs = JSON.parse(data);
@@ -149,13 +224,131 @@ app.delete('/api/blogs/:id', async (req, res) => {
   }
 });
 
+// Get About page content (PUBLIC)
+app.get('/api/about', async (req, res) => {
+  try {
+    const data = await fs.readFile('./about.json', 'utf-8');
+    const about = JSON.parse(data);
+    const htmlContent = marked(about.content);
+    res.json({
+      ...about,
+      htmlContent
+    });
+  } catch (error) {
+    console.error('Error loading about page:', error);
+    res.status(500).json({ error: 'Failed to load about page' });
+  }
+});
+
+// Update About page content (PROTECTED - admin only)
+app.put('/api/about', requireAuth, async (req, res) => {
+  try {
+    const { title, content } = req.body;
+
+    if (!title || !content) {
+      return res.status(400).json({ error: 'Title and content are required' });
+    }
+
+    const aboutData = {
+      title,
+      content
+    };
+
+    await fs.writeFile('./about.json', JSON.stringify(aboutData, null, 2));
+    
+    const htmlContent = marked(content);
+    res.json({ 
+      success: true, 
+      message: 'About page updated successfully',
+      ...aboutData,
+      htmlContent
+    });
+  } catch (error) {
+    console.error('Error updating about page:', error);
+    res.status(500).json({ error: 'Failed to update about page' });
+  }
+});
+
+// Newsletter subscription endpoint
+app.post('/api/newsletter/subscribe', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Please provide a valid email address' });
+    }
+
+    const data = await fs.readFile('./newsletter-subscribers.json', 'utf-8');
+    let subscribers = JSON.parse(data);
+
+    // Check if email already exists
+    const existingSubscriber = subscribers.find(sub => sub.email.toLowerCase() === email.toLowerCase());
+    
+    if (existingSubscriber) {
+      return res.status(400).json({ error: 'This email is already subscribed!' });
+    }
+
+    // Add new subscriber
+    const newSubscriber = {
+      email: email.toLowerCase(),
+      subscribedAt: new Date().toISOString(),
+      id: Date.now().toString()
+    };
+
+    subscribers.push(newSubscriber);
+    await fs.writeFile('./newsletter-subscribers.json', JSON.stringify(subscribers, null, 2));
+
+    res.json({ 
+      success: true, 
+      message: 'Thank you for subscribing! You\'ll receive updates about new posts.' 
+    });
+  } catch (error) {
+    console.error('Newsletter subscription error:', error);
+    res.status(500).json({ error: 'Failed to subscribe. Please try again later.' });
+  }
+});
+
+// Get newsletter subscribers (PROTECTED - admin only)
+app.get('/api/newsletter/subscribers', requireAuth, async (req, res) => {
+  try {
+    const data = await fs.readFile('./newsletter-subscribers.json', 'utf-8');
+    const subscribers = JSON.parse(data);
+    res.json(subscribers);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load subscribers' });
+  }
+});
+
+// Delete newsletter subscriber (PROTECTED - admin only)
+app.delete('/api/newsletter/subscribers/:id', requireAuth, async (req, res) => {
+  try {
+    const data = await fs.readFile('./newsletter-subscribers.json', 'utf-8');
+    let subscribers = JSON.parse(data);
+    
+    const subscriber = subscribers.find(sub => sub.id === req.params.id);
+    
+    if (!subscriber) {
+      return res.status(404).json({ error: 'Subscriber not found' });
+    }
+
+    // Remove subscriber
+    subscribers = subscribers.filter(sub => sub.id !== req.params.id);
+    await fs.writeFile('./newsletter-subscribers.json', JSON.stringify(subscribers, null, 2));
+
+    res.json({ success: true, message: 'Subscriber removed successfully' });
+  } catch (error) {
+    console.error('Error removing subscriber:', error);
+    res.status(500).json({ error: 'Failed to remove subscriber' });
+  }
+});
+
 // Serve index page
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Serve admin page
-app.get('/admin', (req, res) => {
+// Serve admin page (PROTECTED)
+app.get('/admin', isAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 

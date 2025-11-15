@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login - Sophia's Scribbles</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .login-container {
+      max-width: 400px;
+      margin: 4rem auto;
+      padding: 2rem;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .login-container h2 {
+      color: #7c3aed;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .form-group label {
+      font-weight: 600;
+      color: #4b5563;
+    }
+
+    .form-group input {
+      padding: 0.75rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #7c3aed;
+    }
+
+    .login-btn {
+      padding: 0.75rem;
+      background: #7c3aed;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-top: 0.5rem;
+    }
+
+    .login-btn:hover {
+      background: #6d28d9;
+    }
+
+    .login-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .error-message {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 0.75rem;
+      border-radius: 8px;
+      text-align: center;
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+    }
+
+    .back-link {
+      text-align: center;
+      margin-top: 1rem;
+    }
+
+    .back-link a {
+      color: #7c3aed;
+      text-decoration: none;
+    }
+
+    .back-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-container">
+      <a href="/" class="logo">Sophia's Scribbles</a>
+      <nav class="nav-tabs">
+        <a href="/">Home</a>
+        <a href="#about">About</a>
+        <a href="#posts">Posts</a>
+      </nav>
+      <span class="admin-login-btn" style="opacity: 0.5; cursor: default;">🔐 Admin</span>
+    </div>
+  </header>
+
+  <div class="login-container">
+    <h2>🔐 Admin Access</h2>
+    <div id="errorMessage" class="error-message"></div>
+    
+    <form id="loginForm" class="login-form">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autocomplete="username">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password">
+      </div>
+
+      <button type="submit" class="login-btn" id="loginBtn">Login</button>
+    </form>
+
+    <div class="back-link">
+      <a href="/">← Back to Blog</a>
+    </div>
+  </div>
+
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const errorMessage = document.getElementById('errorMessage');
+
+    // Check if already logged in
+    fetch('/api/auth/status')
+      .then(res => res.json())
+      .then(data => {
+        if (data.authenticated) {
+          window.location.href = '/admin';
+        }
+      });
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Logging in...';
+      errorMessage.classList.remove('show');
+
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          window.location.href = '/admin';
+        } else {
+          errorMessage.textContent = data.error || 'Invalid username or password';
+          errorMessage.classList.add('show');
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Login';
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        errorMessage.textContent = 'An error occurred. Please try again.';
+        errorMessage.classList.add('show');
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Login';
+      }
+    });
+  </script>
+</body>
+</html>

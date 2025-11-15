@@ -8,11 +8,14 @@
 </head>
 <body>
   <header>
-    <h1>Sophia's Scribbles</h1>
-    <p>A cozy corner for thoughts, stories, and musings</p>
-    <div class="nav-links">
-      <a href="/">Home</a>
-      <a href="/admin">Write a Post</a>
+    <div class="header-container">
+      <a href="/" class="logo">Sophia's Scribbles</a>
+      <nav class="nav-tabs">
+        <a href="#home" class="active" data-page="home">Home</a>
+        <a href="#about" data-page="about">About</a>
+        <a href="#posts" data-page="posts">Posts</a>
+      </nav>
+      <a href="/login.html" class="admin-login-btn">🔐 Admin</a>
     </div>
   </header>
 
@@ -22,9 +25,30 @@
     </div>
   </div>
 
+  <!-- Newsletter Section -->
+  <section class="newsletter-section">
+    <div class="newsletter-container">
+      <h2>📬 Subscribe to Sophia's Newsletter</h2>
+      <p>Get the latest posts and musings delivered straight to your inbox!</p>
+      <form id="newsletterForm" class="newsletter-form">
+        <input 
+          type="email" 
+          id="newsletterEmail" 
+          placeholder="Enter your email address..." 
+          required
+          aria-label="Email address"
+        >
+        <button type="submit" class="newsletter-btn">Subscribe</button>
+      </form>
+      <div id="newsletterMessage" class="newsletter-message"></div>
+      <p class="newsletter-privacy">We respect your privacy. Unsubscribe at any time.</p>
+    </div>
+  </section>
+
   <script>
     // Router
     const app = document.getElementById('app');
+    let currentPage = 'home';
 
     // Get blog ID from URL
     function getBlogIdFromUrl() {
@@ -131,22 +155,138 @@
       return div.innerHTML;
     }
 
-    // Initialize app
-    function init() {
-      const blogId = getBlogIdFromUrl();
+    // Load home page (blank for now)
+    function loadHome() {
+      app.innerHTML = `
+        <div style="text-align: center; padding: 4rem 2rem; color: var(--text-light);">
+          <h2 style="font-size: 2.5rem; color: var(--deep-purple); margin-bottom: 1rem;">Welcome to Sophia's Scribbles</h2>
+          <p style="font-size: 1.2rem; font-style: italic;">A cozy corner for thoughts, stories, and musings</p>
+        </div>
+      `;
+    }
 
-      if (blogId) {
-        loadBlogPost(blogId);
-      } else {
-        loadBlogs();
+    // Load about page
+    async function loadAbout() {
+      try {
+        app.innerHTML = '<div class="loading">Loading...</div>';
+        const response = await fetch('/api/about');
+        const about = await response.json();
+
+        app.innerHTML = `
+          <article class="blog-post">
+            <h1>${escapeHtml(about.title)}</h1>
+            <div class="blog-content">
+              ${about.htmlContent}
+            </div>
+          </article>
+        `;
+      } catch (error) {
+        console.error('Error loading about page:', error);
+        app.innerHTML = '<div class="error">Failed to load about page.</div>';
       }
     }
 
-    // Handle browser back/forward
+    // Initialize app
+    function init() {
+      const blogId = getBlogIdFromUrl();
+      const hash = window.location.hash.slice(1) || 'home';
+
+      if (blogId) {
+        currentPage = 'posts';
+        loadBlogPost(blogId);
+      } else if (hash === 'about') {
+        currentPage = 'about';
+        loadAbout();
+      } else if (hash === 'posts') {
+        currentPage = 'posts';
+        loadBlogs();
+      } else {
+        currentPage = 'home';
+        loadHome();
+      }
+      updateActiveTab();
+    }
+
+    // Handle browser back/forward and hash changes
     window.addEventListener('popstate', init);
+    window.addEventListener('hashchange', init);
+
+    // Handle tab navigation
+    document.querySelectorAll('.nav-tabs a').forEach(link => {
+      link.addEventListener('click', (e) => {
+        const page = link.getAttribute('data-page');
+        
+        // Clear any blog post query params
+        if (window.location.search) {
+          window.history.pushState({}, '', '/');
+        }
+        
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Update active state
+        updateActiveTab();
+      });
+    });
+
+    // Update active tab based on current page
+    function updateActiveTab() {
+      const hash = window.location.hash.slice(1) || 'home';
+      document.querySelectorAll('.nav-tabs a').forEach(a => {
+        a.classList.remove('active');
+        if (a.getAttribute('data-page') === hash) {
+          a.classList.add('active');
+        }
+      });
+    }
 
     // Start the app
     init();
+    updateActiveTab();
+
+    // Newsletter subscription handler
+    const newsletterForm = document.getElementById('newsletterForm');
+    const newsletterMessage = document.getElementById('newsletterMessage');
+
+    newsletterForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('newsletterEmail').value;
+      const submitBtn = newsletterForm.querySelector('.newsletter-btn');
+      
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Subscribing...';
+      newsletterMessage.textContent = '';
+      newsletterMessage.className = 'newsletter-message';
+
+      try {
+        const response = await fetch('/api/newsletter/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          newsletterMessage.textContent = data.message || 'Thank you for subscribing! 🎉';
+          newsletterMessage.className = 'newsletter-message success';
+          newsletterForm.reset();
+        } else {
+          newsletterMessage.textContent = data.error || 'Something went wrong. Please try again.';
+          newsletterMessage.className = 'newsletter-message error';
+        }
+      } catch (error) {
+        console.error('Newsletter subscription error:', error);
+        newsletterMessage.textContent = 'Unable to subscribe. Please try again later.';
+        newsletterMessage.className = 'newsletter-message error';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Subscribe';
+      }
+    });
   </script>
 </body>
 </html>

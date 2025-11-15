@@ -8,16 +8,42 @@
 </head>
 <body>
   <header>
-    <h1>Sophia's Scribbles</h1>
-    <p>Write & Manage Your Posts</p>
-    <div class="nav-links">
-      <a href="/">View Blog</a>
-      <a href="/admin">Admin</a>
+    <div class="header-container">
+      <a href="/" class="logo">Sophia's Scribbles</a>
+      <nav class="nav-tabs">
+        <a href="/">Home</a>
+        <a href="#about">About</a>
+        <a href="#posts">Posts</a>
+      </nav>
+      <button id="logoutBtn" class="admin-login-btn" style="background: rgba(220, 38, 38, 0.9); border-color: rgba(220, 38, 38, 0.5);">Logout</button>
     </div>
   </header>
 
   <div class="admin-container">
     <div id="message"></div>
+
+    <div class="upload-form">
+      <h2>✏️ Edit About Page</h2>
+      <form id="aboutForm">
+        <div class="form-group">
+          <label for="aboutTitle">Page Title</label>
+          <input type="text" id="aboutTitle" name="title" required placeholder="About Sophia">
+        </div>
+
+        <div class="form-group">
+          <label for="aboutContent">Page Content (Markdown)</label>
+          <textarea id="aboutContent" name="content" placeholder="# About Me
+
+Write about yourself here using markdown...
+
+## Section Heading
+
+You can use **bold**, *italic*, [links](https://example.com), and more!"></textarea>
+        </div>
+
+        <button type="submit" class="submit-btn" id="aboutSubmitBtn">Update About Page</button>
+      </form>
+    </div>
 
     <div class="upload-form">
       <h2>Create New Post</h2>
@@ -85,15 +111,24 @@ Code blocks work as well!
         <div class="loading">Loading posts...</div>
       </div>
     </div>
+
+    <div class="blog-list" style="margin-top: 2rem;">
+      <h2>📬 Newsletter Subscribers</h2>
+      <div id="subscribersList">
+        <div class="loading">Loading subscribers...</div>
+      </div>
+    </div>
   </div>
 
   <script>
+    const aboutForm = document.getElementById('aboutForm');
     const blogForm = document.getElementById('blogForm');
     const messageDiv = document.getElementById('message');
     const blogsListDiv = document.getElementById('blogsList');
     const contentArea = document.getElementById('contentArea');
     const fileArea = document.getElementById('fileArea');
     const submitBtn = document.getElementById('submitBtn');
+    const aboutSubmitBtn = document.getElementById('aboutSubmitBtn');
 
     // Toggle between write and upload modes
     document.querySelectorAll('input[name="contentMethod"]').forEach(radio => {
@@ -177,7 +212,12 @@ Code blocks work as well!
         loadBlogsForManagement();
       } catch (error) {
         console.error('Error deleting blog:', error);
-        showMessage('Failed to delete post. Please try again.', 'error');
+        if (error.message && error.message.includes('401')) {
+          showMessage('Session expired. Please login again.', 'error');
+          setTimeout(() => window.location.href = '/login.html', 2000);
+        } else {
+          showMessage('Failed to delete post. Please try again.', 'error');
+        }
       }
     }
 
@@ -226,7 +266,12 @@ Code blocks work as well!
         fileArea.style.display = 'none';
       } catch (error) {
         console.error('Error creating post:', error);
-        showMessage('Failed to publish post. Please try again.', 'error');
+        if (error.message && error.message.includes('401')) {
+          showMessage('Session expired. Please login again.', 'error');
+          setTimeout(() => window.location.href = '/login.html', 2000);
+        } else {
+          showMessage('Failed to publish post. Please try again.', 'error');
+        }
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Publish Post';
@@ -240,8 +285,180 @@ Code blocks work as well!
       return div.innerHTML;
     }
 
+    // Load About page content into form
+    async function loadAboutPage() {
+      try {
+        const response = await fetch('/api/about');
+        const about = await response.json();
+        
+        document.getElementById('aboutTitle').value = about.title;
+        document.getElementById('aboutContent').value = about.content;
+      } catch (error) {
+        console.error('Error loading about page:', error);
+        showMessage('Failed to load About page content.', 'error');
+      }
+    }
+
+    // Handle About form submission
+    aboutForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const title = document.getElementById('aboutTitle').value;
+      const content = document.getElementById('aboutContent').value;
+      
+      aboutSubmitBtn.disabled = true;
+      aboutSubmitBtn.textContent = 'Updating...';
+
+      try {
+        const response = await fetch('/api/about', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ title, content })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showMessage('About page updated successfully!', 'success');
+        } else {
+          throw new Error(data.error || 'Failed to update');
+        }
+      } catch (error) {
+        console.error('Error updating about page:', error);
+        if (error.message && error.message.includes('401')) {
+          showMessage('Session expired. Please login again.', 'error');
+          setTimeout(() => window.location.href = '/login.html', 2000);
+        } else {
+          showMessage('Failed to update About page. Please try again.', 'error');
+        }
+      } finally {
+        aboutSubmitBtn.disabled = false;
+        aboutSubmitBtn.textContent = 'Update About Page';
+      }
+    });
+
+    // Check authentication on page load
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/auth/status');
+        const data = await response.json();
+        
+        if (!data.authenticated) {
+          window.location.href = '/login.html';
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        window.location.href = '/login.html';
+      }
+    }
+
+    // Logout functionality
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to logout?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/logout', {
+          method: 'POST'
+        });
+
+        if (response.ok) {
+          window.location.href = '/login.html';
+        }
+      } catch (error) {
+        console.error('Logout failed:', error);
+        alert('Failed to logout. Please try again.');
+      }
+    });
+
+    // Remove subscriber
+    async function removeSubscriber(id, email) {
+      if (!confirm(`Are you sure you want to remove "${email}" from the newsletter?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/newsletter/subscribers/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to remove subscriber');
+        }
+
+        showMessage('Subscriber removed successfully!', 'success');
+        loadSubscribers();
+      } catch (error) {
+        console.error('Error removing subscriber:', error);
+        showMessage('Failed to remove subscriber. Please try again.', 'error');
+      }
+    }
+
+    // Make removeSubscriber available globally
+    window.removeSubscriber = removeSubscriber;
+
+    // Load newsletter subscribers
+    async function loadSubscribers() {
+      const subscribersListDiv = document.getElementById('subscribersList');
+      
+      try {
+        const response = await fetch('/api/newsletter/subscribers');
+        const subscribers = await response.json();
+
+        if (subscribers.length === 0) {
+          subscribersListDiv.innerHTML = '<div class="empty-state">No subscribers yet.</div>';
+          return;
+        }
+
+        subscribersListDiv.innerHTML = '';
+        
+        // Add count header
+        const countDiv = document.createElement('div');
+        countDiv.style.padding = '1rem';
+        countDiv.style.background = 'var(--pale-purple)';
+        countDiv.style.borderRadius = '8px';
+        countDiv.style.marginBottom = '1rem';
+        countDiv.style.fontWeight = 'bold';
+        countDiv.style.color = 'var(--deep-purple)';
+        countDiv.textContent = `Total Subscribers: ${subscribers.length}`;
+        subscribersListDiv.appendChild(countDiv);
+
+        subscribers.forEach(subscriber => {
+          const item = document.createElement('div');
+          item.className = 'blog-item';
+
+          const date = new Date(subscriber.subscribedAt).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          item.innerHTML = `
+            <div class="blog-item-info">
+              <h3>${escapeHtml(subscriber.email)}</h3>
+              <p>Subscribed on ${date}</p>
+            </div>
+            <button class="delete-btn" onclick="removeSubscriber('${subscriber.id}', '${escapeHtml(subscriber.email)}')">Remove</button>
+          `;
+
+          subscribersListDiv.appendChild(item);
+        });
+      } catch (error) {
+        console.error('Error loading subscribers:', error);
+        subscribersListDiv.innerHTML = '<div class="error">Failed to load subscribers.</div>';
+      }
+    }
+
     // Initialize
+    checkAuth();
+    loadAboutPage();
     loadBlogsForManagement();
+    loadSubscribers();
   </script>
 </body>
 </html>
