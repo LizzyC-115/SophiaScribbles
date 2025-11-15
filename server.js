@@ -5,19 +5,70 @@ const path = require('path');
 const fs = require('fs').promises;
 const multer = require('multer');
 const { marked } = require('marked');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { body, validationResult } = require('express-validator');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Security: Configure marked to be safe
+marked.setOptions({
+  sanitize: false,
+  breaks: true,
+  gfm: true
+});
+
+// Security Headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      fontSrc: ["'self'", "data:"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+
+// Rate limiting for login attempts
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 login requests per windowMs
+  message: 'Too many login attempts from this IP, please try again after 15 minutes',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// General API rate limiter
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Apply API rate limiter to all API routes
+app.use('/api/', apiLimiter);
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key-change-this',
   resave: false,
   saveUninitialized: false,
-  cookie: { 
-    secure: false, // Set to true if using HTTPS
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+    httpOnly: true,
+    sameSite: 'strict',
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
@@ -35,12 +86,41 @@ const storage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    const uniqueName = Date.now() + '-' + file.originalname.replace(/\s+/g, '-').toLowerCase();
+    // Sanitize filename to prevent path traversal
+    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '-').toLowerCase();
+    const uniqueName = Date.now() + '-' + sanitizedName;
     cb(null, uniqueName);
   }
 });
 
-const upload = multer({ storage });
+// File filter for upload validation
+const fileFilter = (req, file, cb) => {
+  const allowedMimeTypes = ['text/markdown', 'text/plain', 'application/octet-stream'];
+  const allowedExtensions = ['.md', '.markdown', '.txt'];
+
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  if (allowedExtensions.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only .md, .markdown, and .txt files are allowed.'), false);
+  }
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max file size
+    files: 1
+  }
+});
+
+// Helper function to prevent path traversal
+function sanitizePath(filename) {
+  // Remove any path separators and parent directory references
+  return path.basename(filename);
+}
 
 // Authentication middleware
 function requireAuth(req, res, next) {
@@ -113,7 +193,9 @@ app.get('/api/blogs/:id', async (req, res) => {
       return res.status(404).json({ error: 'Blog not found' });
     }
 
-    const content = await fs.readFile(`./blogs/${blog.filename}`, 'utf-8');
+    // Sanitize filename to prevent path traversal
+    const safeFilename = sanitizePath(blog.filename);
+    const content = await fs.readFile(`./blogs/${safeFilename}`, 'utf-8');
     const htmlContent = marked(content);
 
     res.json({
@@ -126,18 +208,28 @@ app.get('/api/blogs/:id', async (req, res) => {
   }
 });
 
-// Login endpoint
-app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
-  
-  if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
-    req.session.isAdmin = true;
-    req.session.username = username;
-    res.json({ success: true, message: 'Login successful' });
-  } else {
-    res.status(401).json({ success: false, error: 'Invalid credentials' });
+// Login endpoint with rate limiting and validation
+app.post('/api/login',
+  loginLimiter,
+  body('username').trim().isLength({ min: 1, max: 50 }).escape(),
+  body('password').isLength({ min: 1, max: 100 }),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, error: 'Invalid input' });
+    }
+
+    const { username, password } = req.body;
+
+    if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+      req.session.isAdmin = true;
+      req.session.username = username;
+      res.json({ success: true, message: 'Login successful' });
+    } else {
+      res.status(401).json({ success: false, error: 'Invalid credentials' });
+    }
   }
-});
+);
 
 // Logout endpoint
 app.post('/api/logout', (req, res) => {
@@ -162,6 +254,16 @@ app.get('/api/auth/status', (req, res) => {
 app.post('/api/blogs', requireAuth, upload.single('file'), async (req, res) => {
   try {
     const { title, author, excerpt } = req.body;
+
+    // Validate inputs
+    if (!title || title.trim().length === 0) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    if (title.length > 200) {
+      return res.status(400).json({ error: 'Title must be less than 200 characters' });
+    }
+
     let content = '';
     let filename = '';
 
@@ -169,10 +271,23 @@ app.post('/api/blogs', requireAuth, upload.single('file'), async (req, res) => {
       // Markdown file uploaded
       filename = req.file.filename;
       content = await fs.readFile(req.file.path, 'utf-8');
+
+      // Validate content size
+      if (content.length > 1000000) { // 1MB of text
+        await fs.unlink(req.file.path); // Clean up uploaded file
+        return res.status(400).json({ error: 'Content is too large (max 1MB)' });
+      }
     } else if (req.body.content) {
       // Content provided directly
       content = req.body.content;
-      filename = Date.now() + '-' + title.replace(/\s+/g, '-').toLowerCase() + '.md';
+
+      if (content.length > 1000000) {
+        return res.status(400).json({ error: 'Content is too large (max 1MB)' });
+      }
+
+      // Sanitize filename
+      const safeTitle = title.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
+      filename = Date.now() + '-' + safeTitle + '.md';
       await fs.writeFile(`./blogs/${filename}`, content);
     } else {
       return res.status(400).json({ error: 'No content provided' });
@@ -181,12 +296,16 @@ app.post('/api/blogs', requireAuth, upload.single('file'), async (req, res) => {
     const data = await fs.readFile('./blogs/metadata.json', 'utf-8');
     const blogs = JSON.parse(data);
 
+    const sanitizedAuthor = author ? author.substring(0, 100) : 'Anonymous';
+    const autoExcerpt = content.substring(0, 150).replace(/[#*_`]/g, '') + '...';
+    const sanitizedExcerpt = excerpt ? excerpt.substring(0, 300) : autoExcerpt;
+
     const newBlog = {
       id: Date.now().toString(),
-      title,
-      author: author || 'Anonymous',
+      title: title.substring(0, 200),
+      author: sanitizedAuthor,
       date: new Date().toISOString(),
-      excerpt: excerpt || content.substring(0, 150).replace(/[#*_]/g, '') + '...',
+      excerpt: sanitizedExcerpt,
       filename
     };
 
@@ -211,8 +330,11 @@ app.delete('/api/blogs/:id', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Blog not found' });
     }
 
+    // Sanitize filename to prevent path traversal
+    const safeFilename = sanitizePath(blog.filename);
+
     // Delete the file
-    await fs.unlink(`./blogs/${blog.filename}`);
+    await fs.unlink(`./blogs/${safeFilename}`);
 
     // Remove from metadata
     blogs = blogs.filter(b => b.id !== req.params.id);
@@ -249,16 +371,25 @@ app.put('/api/about', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Title and content are required' });
     }
 
+    // Validate input lengths
+    if (title.length > 200) {
+      return res.status(400).json({ error: 'Title must be less than 200 characters' });
+    }
+
+    if (content.length > 100000) {
+      return res.status(400).json({ error: 'Content is too large (max 100KB)' });
+    }
+
     const aboutData = {
-      title,
-      content
+      title: title.substring(0, 200),
+      content: content.substring(0, 100000)
     };
 
     await fs.writeFile('./about.json', JSON.stringify(aboutData, null, 2));
-    
-    const htmlContent = marked(content);
-    res.json({ 
-      success: true, 
+
+    const htmlContent = marked(aboutData.content);
+    res.json({
+      success: true,
       message: 'About page updated successfully',
       ...aboutData,
       htmlContent
@@ -269,44 +400,48 @@ app.put('/api/about', requireAuth, async (req, res) => {
   }
 });
 
-// Newsletter subscription endpoint
-app.post('/api/newsletter/subscribe', async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    if (!email || !email.includes('@')) {
+// Newsletter subscription endpoint with validation
+app.post('/api/newsletter/subscribe',
+  body('email').isEmail().normalizeEmail().isLength({ max: 100 }),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
       return res.status(400).json({ error: 'Please provide a valid email address' });
     }
 
-    const data = await fs.readFile('./newsletter-subscribers.json', 'utf-8');
-    let subscribers = JSON.parse(data);
+    try {
+      const { email } = req.body;
 
-    // Check if email already exists
-    const existingSubscriber = subscribers.find(sub => sub.email.toLowerCase() === email.toLowerCase());
-    
-    if (existingSubscriber) {
-      return res.status(400).json({ error: 'This email is already subscribed!' });
+      const data = await fs.readFile('./newsletter-subscribers.json', 'utf-8');
+      let subscribers = JSON.parse(data);
+
+      // Check if email already exists
+      const existingSubscriber = subscribers.find(sub => sub.email.toLowerCase() === email.toLowerCase());
+
+      if (existingSubscriber) {
+        return res.status(400).json({ error: 'This email is already subscribed!' });
+      }
+
+      // Add new subscriber
+      const newSubscriber = {
+        email: email.toLowerCase(),
+        subscribedAt: new Date().toISOString(),
+        id: Date.now().toString()
+      };
+
+      subscribers.push(newSubscriber);
+      await fs.writeFile('./newsletter-subscribers.json', JSON.stringify(subscribers, null, 2));
+
+      res.json({
+        success: true,
+        message: 'Thank you for subscribing! You\'ll receive updates about new posts.'
+      });
+    } catch (error) {
+      console.error('Newsletter subscription error:', error);
+      res.status(500).json({ error: 'Failed to subscribe. Please try again later.' });
     }
-
-    // Add new subscriber
-    const newSubscriber = {
-      email: email.toLowerCase(),
-      subscribedAt: new Date().toISOString(),
-      id: Date.now().toString()
-    };
-
-    subscribers.push(newSubscriber);
-    await fs.writeFile('./newsletter-subscribers.json', JSON.stringify(subscribers, null, 2));
-
-    res.json({ 
-      success: true, 
-      message: 'Thank you for subscribing! You\'ll receive updates about new posts.' 
-    });
-  } catch (error) {
-    console.error('Newsletter subscription error:', error);
-    res.status(500).json({ error: 'Failed to subscribe. Please try again later.' });
   }
-});
+);
 
 // Get newsletter subscribers (PROTECTED - admin only)
 app.get('/api/newsletter/subscribers', requireAuth, async (req, res) => {

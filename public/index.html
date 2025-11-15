@@ -5,6 +5,210 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sophia's Scribbles - A Cozy Corner for Thoughts</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Page transitions */
+    .page-content {
+      animation: fadeInUp 0.5s ease;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Enhanced blog cards */
+    .blog-card {
+      transform-origin: center;
+      animation: scaleIn 0.4s ease backwards;
+    }
+
+    .blog-card:nth-child(1) { animation-delay: 0.1s; }
+    .blog-card:nth-child(2) { animation-delay: 0.2s; }
+    .blog-card:nth-child(3) { animation-delay: 0.3s; }
+    .blog-card:nth-child(4) { animation-delay: 0.4s; }
+    .blog-card:nth-child(5) { animation-delay: 0.5s; }
+    .blog-card:nth-child(6) { animation-delay: 0.6s; }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    /* Loading spinner */
+    .loading-spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--pale-purple);
+      border-top-color: var(--primary-purple);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-light);
+    }
+
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    /* Hero section */
+    .hero {
+      text-align: center;
+      padding: 4rem 2rem;
+      background: linear-gradient(135deg, rgba(139, 122, 184, 0.1), rgba(180, 167, 214, 0.1));
+      border-radius: 20px;
+      margin-bottom: 3rem;
+      animation: fadeInUp 0.6s ease;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      color: var(--deep-purple);
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--primary-purple), var(--deep-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.3rem;
+      font-style: italic;
+      color: var(--text-light);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Toast notifications */
+    .toast {
+      position: fixed;
+      top: 2rem;
+      right: 2rem;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+      max-width: 400px;
+    }
+
+    .toast.success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+    }
+
+    .toast.error {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Back button enhancement */
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      padding: 0.75rem 1.5rem;
+      background: white;
+      border: 2px solid var(--primary-purple);
+      border-radius: 8px;
+      color: var(--primary-purple);
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .back-button:hover {
+      background: var(--primary-purple);
+      color: white;
+      transform: translateX(-5px);
+    }
+
+    /* Enhanced empty state */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      animation: fadeInUp 0.5s ease;
+    }
+
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .empty-state h2 {
+      color: var(--deep-purple);
+      margin-bottom: 1rem;
+    }
+
+    .empty-state p {
+      color: var(--text-light);
+      font-size: 1.1rem;
+    }
+
+    /* Newsletter enhancements */
+    .newsletter-section {
+      animation: fadeInUp 0.7s ease;
+    }
+
+    .newsletter-form button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Section headers */
+    .section-header {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: fadeInUp 0.5s ease;
+    }
+
+    .section-header h2 {
+      font-size: 2.5rem;
+      color: var(--deep-purple);
+      margin-bottom: 0.5rem;
+    }
+
+    .section-header p {
+      color: var(--text-light);
+      font-size: 1.1rem;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -15,26 +219,31 @@
         <a href="#about" data-page="about">About</a>
         <a href="#posts" data-page="posts">Posts</a>
       </nav>
-      <a href="/login.html" class="admin-login-btn">🔐 Admin</a>
+      <a href="/login.html" class="admin-login-btn">Admin</a>
     </div>
   </header>
 
   <div class="container">
     <div id="app">
-      <div class="loading">Loading posts...</div>
+      <div class="loading">
+        <div class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- Newsletter Section -->
   <section class="newsletter-section">
     <div class="newsletter-container">
-      <h2>📬 Subscribe to Sophia's Newsletter</h2>
+      <h2>Subscribe to the Newsletter</h2>
       <p>Get the latest posts and musings delivered straight to your inbox!</p>
       <form id="newsletterForm" class="newsletter-form">
-        <input 
-          type="email" 
-          id="newsletterEmail" 
-          placeholder="Enter your email address..." 
+        <input
+          type="email"
+          id="newsletterEmail"
+          placeholder="Enter your email address..."
           required
           aria-label="Email address"
         >
@@ -50,6 +259,18 @@
     const app = document.getElementById('app');
     let currentPage = 'home';
 
+    // Show toast notification
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.remove();
+      }, 4000);
+    }
+
     // Get blog ID from URL
     function getBlogIdFromUrl() {
       const params = new URLSearchParams(window.location.search);
@@ -59,18 +280,38 @@
     // Load all blogs
     async function loadBlogs() {
       try {
+        app.innerHTML = `
+          <div class="loading">
+            <div class="loading-container">
+              <div class="loading-spinner"></div>
+              <p>Loading posts...</p>
+            </div>
+          </div>
+        `;
+
         const response = await fetch('/api/blogs');
         const blogs = await response.json();
 
         if (blogs.length === 0) {
           app.innerHTML = `
             <div class="empty-state">
+              <div class="empty-state-icon">📝</div>
               <h2>No posts yet</h2>
-              <p>Check back soon for new content, or visit the <a href="/admin">admin page</a> to create your first post!</p>
+              <p>Check back soon for new content!</p>
             </div>
           `;
           return;
         }
+
+        const content = document.createElement('div');
+        content.className = 'page-content';
+
+        const header = document.createElement('div');
+        header.className = 'section-header';
+        header.innerHTML = `
+          <h2>Latest Posts</h2>
+          <p>Explore thoughts, stories, and musings</p>
+        `;
 
         const blogGrid = document.createElement('div');
         blogGrid.className = 'blog-grid';
@@ -101,17 +342,34 @@
           blogGrid.appendChild(card);
         });
 
+        content.appendChild(header);
+        content.appendChild(blogGrid);
         app.innerHTML = '';
-        app.appendChild(blogGrid);
+        app.appendChild(content);
       } catch (error) {
         console.error('Error loading blogs:', error);
-        app.innerHTML = '<div class="error">Failed to load blog posts. Please try again later.</div>';
+        app.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">⚠️</div>
+            <h2>Oops!</h2>
+            <p>Failed to load blog posts. Please try again later.</p>
+          </div>
+        `;
       }
     }
 
     // Load single blog post
     async function loadBlogPost(id) {
       try {
+        app.innerHTML = `
+          <div class="loading">
+            <div class="loading-container">
+              <div class="loading-spinner"></div>
+              <p>Loading post...</p>
+            </div>
+          </div>
+        `;
+
         const response = await fetch(`/api/blogs/${id}`);
 
         if (!response.ok) {
@@ -126,8 +384,10 @@
           day: 'numeric'
         });
 
-        app.innerHTML = `
-          <a href="/" class="back-button">← Back to all posts</a>
+        const content = document.createElement('div');
+        content.className = 'page-content';
+        content.innerHTML = `
+          <a href="/#posts" class="back-button">← Back to all posts</a>
           <article class="blog-post">
             <h1>${escapeHtml(blog.title)}</h1>
             <div class="blog-meta">
@@ -139,11 +399,20 @@
             </div>
           </article>
         `;
+
+        app.innerHTML = '';
+        app.appendChild(content);
       } catch (error) {
         console.error('Error loading blog post:', error);
         app.innerHTML = `
-          <a href="/" class="back-button">← Back to all posts</a>
-          <div class="error">Failed to load blog post. It may have been deleted.</div>
+          <div class="page-content">
+            <a href="/#posts" class="back-button">← Back to all posts</a>
+            <div class="empty-state">
+              <div class="empty-state-icon">⚠️</div>
+              <h2>Post Not Found</h2>
+              <p>This post may have been deleted or moved.</p>
+            </div>
+          </div>
         `;
       }
     }
@@ -155,24 +424,38 @@
       return div.innerHTML;
     }
 
-    // Load home page (blank for now)
+    // Load home page
     function loadHome() {
-      app.innerHTML = `
-        <div style="text-align: center; padding: 4rem 2rem; color: var(--text-light);">
-          <h2 style="font-size: 2.5rem; color: var(--deep-purple); margin-bottom: 1rem;">Welcome to Sophia's Scribbles</h2>
-          <p style="font-size: 1.2rem; font-style: italic;">A cozy corner for thoughts, stories, and musings</p>
+      const content = document.createElement('div');
+      content.className = 'page-content';
+      content.innerHTML = `
+        <div class="hero">
+          <h1>Welcome to Sophia's Scribbles</h1>
+          <p>A cozy corner for thoughts, stories, and musings</p>
         </div>
       `;
+      app.innerHTML = '';
+      app.appendChild(content);
     }
 
     // Load about page
     async function loadAbout() {
       try {
-        app.innerHTML = '<div class="loading">Loading...</div>';
+        app.innerHTML = `
+          <div class="loading">
+            <div class="loading-container">
+              <div class="loading-spinner"></div>
+              <p>Loading...</p>
+            </div>
+          </div>
+        `;
+
         const response = await fetch('/api/about');
         const about = await response.json();
 
-        app.innerHTML = `
+        const content = document.createElement('div');
+        content.className = 'page-content';
+        content.innerHTML = `
           <article class="blog-post">
             <h1>${escapeHtml(about.title)}</h1>
             <div class="blog-content">
@@ -180,9 +463,18 @@
             </div>
           </article>
         `;
+
+        app.innerHTML = '';
+        app.appendChild(content);
       } catch (error) {
         console.error('Error loading about page:', error);
-        app.innerHTML = '<div class="error">Failed to load about page.</div>';
+        app.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">⚠️</div>
+            <h2>Oops!</h2>
+            <p>Failed to load the about page.</p>
+          </div>
+        `;
       }
     }
 
@@ -190,6 +482,9 @@
     function init() {
       const blogId = getBlogIdFromUrl();
       const hash = window.location.hash.slice(1) || 'home';
+
+      // Scroll to top smoothly
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
       if (blogId) {
         currentPage = 'posts';
@@ -215,15 +510,12 @@
     document.querySelectorAll('.nav-tabs a').forEach(link => {
       link.addEventListener('click', (e) => {
         const page = link.getAttribute('data-page');
-        
+
         // Clear any blog post query params
         if (window.location.search) {
           window.history.pushState({}, '', '/');
         }
-        
-        // Scroll to top
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
+
         // Update active state
         updateActiveTab();
       });
@@ -250,10 +542,10 @@
 
     newsletterForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const email = document.getElementById('newsletterEmail').value;
       const submitBtn = newsletterForm.querySelector('.newsletter-btn');
-      
+
       submitBtn.disabled = true;
       submitBtn.textContent = 'Subscribing...';
       newsletterMessage.textContent = '';
@@ -271,17 +563,14 @@
         const data = await response.json();
 
         if (response.ok) {
-          newsletterMessage.textContent = data.message || 'Thank you for subscribing! 🎉';
-          newsletterMessage.className = 'newsletter-message success';
+          showToast(data.message || 'Thank you for subscribing!', 'success');
           newsletterForm.reset();
         } else {
-          newsletterMessage.textContent = data.error || 'Something went wrong. Please try again.';
-          newsletterMessage.className = 'newsletter-message error';
+          showToast(data.error || 'Something went wrong. Please try again.', 'error');
         }
       } catch (error) {
         console.error('Newsletter subscription error:', error);
-        newsletterMessage.textContent = 'Unable to subscribe. Please try again later.';
-        newsletterMessage.className = 'newsletter-message error';
+        showToast('Unable to subscribe. Please try again later.', 'error');
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Subscribe';

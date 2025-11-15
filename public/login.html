@@ -7,24 +7,52 @@
   <link rel="stylesheet" href="styles.css">
   <style>
     .login-container {
-      max-width: 400px;
+      max-width: 450px;
       margin: 4rem auto;
-      padding: 2rem;
+      padding: 3rem;
       background: white;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(139, 122, 184, 0.2);
+      animation: fadeInUp 0.5s ease;
+      border: 1px solid rgba(139, 122, 184, 0.1);
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .login-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
     }
 
     .login-container h2 {
-      color: #7c3aed;
-      margin-bottom: 1.5rem;
-      text-align: center;
+      color: var(--deep-purple);
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+    }
+
+    .login-container p {
+      color: var(--text-light);
+      font-size: 0.95rem;
     }
 
     .login-form {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 1.5rem;
     }
 
     .form-group {
@@ -35,51 +63,73 @@
 
     .form-group label {
       font-weight: 600;
-      color: #4b5563;
+      color: var(--deep-purple);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .form-group input {
-      padding: 0.75rem;
-      border: 2px solid #e5e7eb;
-      border-radius: 8px;
+      padding: 1rem;
+      border: 2px solid var(--pale-purple);
+      border-radius: 10px;
       font-size: 1rem;
-      transition: border-color 0.3s;
+      transition: all 0.3s ease;
+      background: var(--cream);
     }
 
     .form-group input:focus {
       outline: none;
-      border-color: #7c3aed;
+      border-color: var(--primary-purple);
+      background: white;
+      box-shadow: 0 0 0 3px rgba(139, 122, 184, 0.1);
     }
 
     .login-btn {
-      padding: 0.75rem;
-      background: #7c3aed;
+      padding: 1rem;
+      background: linear-gradient(135deg, var(--primary-purple), var(--deep-purple));
       color: white;
       border: none;
-      border-radius: 8px;
-      font-size: 1rem;
+      border-radius: 10px;
+      font-size: 1.1rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.3s;
+      transition: all 0.3s ease;
       margin-top: 0.5rem;
+      box-shadow: 0 4px 12px rgba(139, 122, 184, 0.3);
     }
 
     .login-btn:hover {
-      background: #6d28d9;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(139, 122, 184, 0.4);
+    }
+
+    .login-btn:active {
+      transform: translateY(0);
     }
 
     .login-btn:disabled {
-      background: #9ca3af;
+      background: linear-gradient(135deg, #9ca3af, #6b7280);
       cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
     .error-message {
-      background: #fee2e2;
+      background: linear-gradient(135deg, #fee2e2, #fecaca);
       color: #991b1b;
-      padding: 0.75rem;
-      border-radius: 8px;
+      padding: 1rem;
+      border-radius: 10px;
       text-align: center;
       display: none;
+      border-left: 4px solid #dc2626;
+      animation: shake 0.5s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
     }
 
     .error-message.show {
@@ -88,16 +138,65 @@
 
     .back-link {
       text-align: center;
-      margin-top: 1rem;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--pale-purple);
     }
 
     .back-link a {
-      color: #7c3aed;
+      color: var(--primary-purple);
       text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
     .back-link a:hover {
-      text-decoration: underline;
+      color: var(--deep-purple);
+      transform: translateX(-5px);
+    }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .loading-overlay.active {
+      display: flex;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid var(--pale-purple);
+      border-top-color: var(--primary-purple);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .login-container {
+        margin: 2rem 1rem;
+        padding: 2rem 1.5rem;
+      }
+
+      .login-container h2 {
+        font-size: 1.75rem;
+      }
     }
   </style>
 </head>
@@ -107,29 +206,34 @@
       <a href="/" class="logo">Sophia's Scribbles</a>
       <nav class="nav-tabs">
         <a href="/">Home</a>
-        <a href="#about">About</a>
-        <a href="#posts">Posts</a>
+        <a href="/#about">About</a>
+        <a href="/#posts">Posts</a>
       </nav>
-      <span class="admin-login-btn" style="opacity: 0.5; cursor: default;">🔐 Admin</span>
+      <span class="admin-login-btn" style="opacity: 0.5; cursor: default;">Admin</span>
     </div>
   </header>
 
   <div class="login-container">
-    <h2>🔐 Admin Access</h2>
+    <div class="login-header">
+      <div class="login-icon">🔐</div>
+      <h2>Admin Access</h2>
+      <p>Sign in to manage your blog</p>
+    </div>
+
     <div id="errorMessage" class="error-message"></div>
-    
+
     <form id="loginForm" class="login-form">
       <div class="form-group">
         <label for="username">Username</label>
-        <input type="text" id="username" name="username" required autocomplete="username">
+        <input type="text" id="username" name="username" required autocomplete="username" placeholder="Enter your username">
       </div>
 
       <div class="form-group">
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" required autocomplete="current-password">
+        <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Enter your password">
       </div>
 
-      <button type="submit" class="login-btn" id="loginBtn">Login</button>
+      <button type="submit" class="login-btn" id="loginBtn">Sign In</button>
     </form>
 
     <div class="back-link">
@@ -137,29 +241,40 @@
     </div>
   </div>
 
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+  </div>
+
   <script>
     const loginForm = document.getElementById('loginForm');
     const loginBtn = document.getElementById('loginBtn');
     const errorMessage = document.getElementById('errorMessage');
+    const loadingOverlay = document.getElementById('loadingOverlay');
 
     // Check if already logged in
+    loadingOverlay.classList.add('active');
     fetch('/api/auth/status')
       .then(res => res.json())
       .then(data => {
         if (data.authenticated) {
           window.location.href = '/admin';
         }
+      })
+      .catch(err => console.error('Auth check error:', err))
+      .finally(() => {
+        loadingOverlay.classList.remove('active');
       });
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
 
       loginBtn.disabled = true;
-      loginBtn.textContent = 'Logging in...';
+      loginBtn.textContent = 'Signing in...';
       errorMessage.classList.remove('show');
+      loadingOverlay.classList.add('active');
 
       try {
         const response = await fetch('/api/login', {
@@ -178,14 +293,16 @@
           errorMessage.textContent = data.error || 'Invalid username or password';
           errorMessage.classList.add('show');
           loginBtn.disabled = false;
-          loginBtn.textContent = 'Login';
+          loginBtn.textContent = 'Sign In';
         }
       } catch (error) {
         console.error('Login error:', error);
         errorMessage.textContent = 'An error occurred. Please try again.';
         errorMessage.classList.add('show');
         loginBtn.disabled = false;
-        loginBtn.textContent = 'Login';
+        loginBtn.textContent = 'Sign In';
+      } finally {
+        loadingOverlay.classList.remove('active');
       }
     });
   </script>

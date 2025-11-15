@@ -5,6 +5,291 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin - Sophia's Scribbles</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-tabs {
+      display: flex;
+      gap: 0;
+      background: white;
+      border-radius: 12px;
+      padding: 0.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 10px rgba(139, 122, 184, 0.1);
+      overflow-x: auto;
+    }
+
+    .admin-tab {
+      padding: 1rem 2rem;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--deep-purple);
+      white-space: nowrap;
+      position: relative;
+    }
+
+    .admin-tab:hover {
+      background: var(--pale-purple);
+    }
+
+    .admin-tab.active {
+      background: linear-gradient(135deg, var(--primary-purple), var(--deep-purple));
+      color: white;
+      box-shadow: 0 4px 12px rgba(139, 122, 184, 0.3);
+    }
+
+    .admin-tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .admin-tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, var(--primary-purple), var(--deep-purple));
+      color: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(139, 122, 184, 0.2);
+      transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .stat-card h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stat-card .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin: 0;
+    }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .loading-overlay.active {
+      display: flex;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid var(--pale-purple);
+      border-top-color: var(--primary-purple);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .blog-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .blog-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(139, 122, 184, 0.1);
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+    }
+
+    .blog-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(139, 122, 184, 0.2);
+      border-color: var(--primary-purple);
+    }
+
+    .blog-card h3 {
+      margin: 0 0 0.5rem 0;
+      color: var(--deep-purple);
+      font-size: 1.2rem;
+    }
+
+    .blog-card .blog-meta {
+      color: #666;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .blog-card .blog-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .btn {
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      flex: 1;
+    }
+
+    .btn-danger {
+      background: rgba(220, 38, 38, 0.9);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: rgba(220, 38, 38, 1);
+      transform: scale(1.05);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-purple), var(--deep-purple));
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(139, 122, 184, 0.3);
+    }
+
+    .subscriber-card {
+      background: white;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(139, 122, 184, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s ease;
+      border-left: 4px solid var(--primary-purple);
+    }
+
+    .subscriber-card:hover {
+      box-shadow: 0 4px 15px rgba(139, 122, 184, 0.2);
+    }
+
+    .subscriber-info h4 {
+      margin: 0 0 0.25rem 0;
+      color: var(--deep-purple);
+    }
+
+    .subscriber-info p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: #666;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: #999;
+    }
+
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-tabs {
+        overflow-x: auto;
+      }
+
+      .blog-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .success-toast {
+      position: fixed;
+      top: 2rem;
+      right: 2rem;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      z-index: 1001;
+      animation: slideIn 0.3s ease;
+    }
+
+    .error-toast {
+      position: fixed;
+      top: 2rem;
+      right: 2rem;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+      z-index: 1001;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -12,8 +297,8 @@
       <a href="/" class="logo">Sophia's Scribbles</a>
       <nav class="nav-tabs">
         <a href="/">Home</a>
-        <a href="#about">About</a>
-        <a href="#posts">Posts</a>
+        <a href="/#about">About</a>
+        <a href="/#posts">Posts</a>
       </nav>
       <button id="logoutBtn" class="admin-login-btn" style="background: rgba(220, 38, 38, 0.9); border-color: rgba(220, 38, 38, 0.5);">Logout</button>
     </div>
@@ -22,62 +307,89 @@
   <div class="admin-container">
     <div id="message"></div>
 
-    <div class="upload-form">
-      <h2>✏️ Edit About Page</h2>
-      <form id="aboutForm">
-        <div class="form-group">
-          <label for="aboutTitle">Page Title</label>
-          <input type="text" id="aboutTitle" name="title" required placeholder="About Sophia">
-        </div>
+    <!-- Stats Dashboard -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h3>Total Posts</h3>
+        <p class="stat-value" id="totalPosts">-</p>
+      </div>
+      <div class="stat-card">
+        <h3>Subscribers</h3>
+        <p class="stat-value" id="totalSubscribers">-</p>
+      </div>
+    </div>
 
-        <div class="form-group">
-          <label for="aboutContent">Page Content (Markdown)</label>
-          <textarea id="aboutContent" name="content" placeholder="# About Me
+    <!-- Admin Tabs -->
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="about">About Page</button>
+      <button class="admin-tab" data-tab="create">Create Post</button>
+      <button class="admin-tab" data-tab="manage">Manage Posts</button>
+      <button class="admin-tab" data-tab="subscribers">Subscribers</button>
+    </div>
+
+    <!-- About Tab -->
+    <div id="about-tab" class="admin-tab-content active">
+      <div class="upload-form">
+        <h2>Edit About Page</h2>
+        <form id="aboutForm">
+          <div class="form-group">
+            <label for="aboutTitle">Page Title</label>
+            <input type="text" id="aboutTitle" name="title" required placeholder="About Sophia">
+          </div>
+
+          <div class="form-group">
+            <label for="aboutContent">Page Content (Markdown)</label>
+            <textarea id="aboutContent" name="content" placeholder="# About Me
 
 Write about yourself here using markdown...
 
 ## Section Heading
 
 You can use **bold**, *italic*, [links](https://example.com), and more!"></textarea>
-        </div>
+          </div>
 
-        <button type="submit" class="submit-btn" id="aboutSubmitBtn">Update About Page</button>
-      </form>
+          <button type="submit" class="submit-btn btn-primary" id="aboutSubmitBtn">Update About Page</button>
+        </form>
+      </div>
     </div>
 
-    <div class="upload-form">
-      <h2>Create New Post</h2>
-      <form id="blogForm">
-        <div class="form-group">
-          <label for="title">Post Title *</label>
-          <input type="text" id="title" name="title" required placeholder="Enter your post title...">
-        </div>
+    <!-- Create Post Tab -->
+    <div id="create-tab" class="admin-tab-content">
+      <div class="upload-form">
+        <h2>Create New Post</h2>
+        <form id="blogForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="title">Post Title *</label>
+              <input type="text" id="title" name="title" required placeholder="Enter your post title...">
+            </div>
 
-        <div class="form-group">
-          <label for="author">Author Name</label>
-          <input type="text" id="author" name="author" placeholder="Sophia (optional)">
-        </div>
-
-        <div class="form-group">
-          <label for="excerpt">Excerpt (Optional)</label>
-          <input type="text" id="excerpt" name="excerpt" placeholder="A short preview of your post...">
-        </div>
-
-        <div class="form-group">
-          <label>Content Method</label>
-          <div style="margin-bottom: 1rem;">
-            <label style="display: inline; font-weight: normal; margin-right: 2rem;">
-              <input type="radio" name="contentMethod" value="write" checked> Write here
-            </label>
-            <label style="display: inline; font-weight: normal;">
-              <input type="radio" name="contentMethod" value="upload"> Upload markdown file
-            </label>
+            <div class="form-group">
+              <label for="author">Author Name</label>
+              <input type="text" id="author" name="author" placeholder="Sophia (optional)">
+            </div>
           </div>
-        </div>
 
-        <div class="form-group" id="contentArea">
-          <label for="content">Post Content (Markdown) *</label>
-          <textarea id="content" name="content" placeholder="# Your Post Title
+          <div class="form-group">
+            <label for="excerpt">Excerpt (Optional)</label>
+            <input type="text" id="excerpt" name="excerpt" placeholder="A short preview of your post...">
+          </div>
+
+          <div class="form-group">
+            <label>Content Method</label>
+            <div style="margin-bottom: 1rem;">
+              <label style="display: inline; font-weight: normal; margin-right: 2rem;">
+                <input type="radio" name="contentMethod" value="write" checked> Write here
+              </label>
+              <label style="display: inline; font-weight: normal;">
+                <input type="radio" name="contentMethod" value="upload"> Upload markdown file
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group" id="contentArea">
+            <label for="content">Post Content (Markdown) *</label>
+            <textarea id="content" name="content" placeholder="# Your Post Title
 
 Write your post here using markdown...
 
@@ -90,34 +402,41 @@ You can use **bold**, *italic*, [links](https://example.com), and more!
 
 > Blockquotes look great!
 
-\`\`\`
+```
 Code blocks work as well!
-\`\`\`
+```
 "></textarea>
-        </div>
+          </div>
 
-        <div class="form-group" id="fileArea" style="display: none;">
-          <label for="file">Upload Markdown File</label>
-          <input type="file" id="file" name="file" accept=".md,.markdown,.txt">
-        </div>
+          <div class="form-group" id="fileArea" style="display: none;">
+            <label for="file">Upload Markdown File</label>
+            <input type="file" id="file" name="file" accept=".md,.markdown,.txt">
+          </div>
 
-        <button type="submit" class="submit-btn" id="submitBtn">Publish Post</button>
-      </form>
+          <button type="submit" class="submit-btn btn-primary" id="submitBtn">Publish Post</button>
+        </form>
+      </div>
     </div>
 
-    <div class="blog-list">
+    <!-- Manage Posts Tab -->
+    <div id="manage-tab" class="admin-tab-content">
       <h2>Manage Posts</h2>
-      <div id="blogsList">
+      <div id="blogsList" class="blog-grid">
         <div class="loading">Loading posts...</div>
       </div>
     </div>
 
-    <div class="blog-list" style="margin-top: 2rem;">
-      <h2>📬 Newsletter Subscribers</h2>
+    <!-- Subscribers Tab -->
+    <div id="subscribers-tab" class="admin-tab-content">
+      <h2>Newsletter Subscribers</h2>
       <div id="subscribersList">
         <div class="loading">Loading subscribers...</div>
       </div>
     </div>
+  </div>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
   </div>
 
   <script>
@@ -129,6 +448,22 @@ Code blocks work as well!
     const fileArea = document.getElementById('fileArea');
     const submitBtn = document.getElementById('submitBtn');
     const aboutSubmitBtn = document.getElementById('aboutSubmitBtn');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+
+    // Tab switching
+    document.querySelectorAll('.admin-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+
+        // Update active tab
+        document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        // Update active content
+        document.querySelectorAll('.admin-tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(`${tabName}-tab`).classList.add('active');
+      });
+    });
 
     // Toggle between write and upload modes
     document.querySelectorAll('input[name="contentMethod"]').forEach(radio => {
@@ -147,12 +482,34 @@ Code blocks work as well!
       });
     });
 
-    // Show message
+    // Show message with toast
     function showMessage(text, type = 'success') {
-      messageDiv.innerHTML = `<div class="message ${type}">${text}</div>`;
+      const toast = document.createElement('div');
+      toast.className = type === 'success' ? 'success-toast' : 'error-toast';
+      toast.textContent = text;
+      document.body.appendChild(toast);
+
       setTimeout(() => {
-        messageDiv.innerHTML = '';
-      }, 5000);
+        toast.remove();
+      }, 4000);
+    }
+
+    // Update stats
+    async function updateStats() {
+      try {
+        const [blogsResponse, subscribersResponse] = await Promise.all([
+          fetch('/api/blogs'),
+          fetch('/api/newsletter/subscribers')
+        ]);
+
+        const blogs = await blogsResponse.json();
+        const subscribers = await subscribersResponse.json();
+
+        document.getElementById('totalPosts').textContent = blogs.length;
+        document.getElementById('totalSubscribers').textContent = subscribers.length;
+      } catch (error) {
+        console.error('Error updating stats:', error);
+      }
     }
 
     // Load all blogs for management
@@ -162,14 +519,19 @@ Code blocks work as well!
         const blogs = await response.json();
 
         if (blogs.length === 0) {
-          blogsListDiv.innerHTML = '<div class="empty-state">No posts yet. Create your first one above!</div>';
+          blogsListDiv.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">📝</div>
+              <p>No posts yet. Create your first one!</p>
+            </div>
+          `;
           return;
         }
 
         blogsListDiv.innerHTML = '';
         blogs.forEach(blog => {
-          const item = document.createElement('div');
-          item.className = 'blog-item';
+          const card = document.createElement('div');
+          card.className = 'blog-card';
 
           const date = new Date(blog.date).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -177,15 +539,16 @@ Code blocks work as well!
             day: 'numeric'
           });
 
-          item.innerHTML = `
-            <div class="blog-item-info">
-              <h3>${escapeHtml(blog.title)}</h3>
-              <p>By ${escapeHtml(blog.author)} • ${date}</p>
+          card.innerHTML = `
+            <h3>${escapeHtml(blog.title)}</h3>
+            <p class="blog-meta">By ${escapeHtml(blog.author)} • ${date}</p>
+            <p style="color: #666; font-size: 0.9rem;">${escapeHtml(blog.excerpt)}</p>
+            <div class="blog-actions">
+              <button class="btn btn-danger" onclick="deleteBlog('${blog.id}', '${escapeHtml(blog.title)}')">Delete</button>
             </div>
-            <button class="delete-btn" onclick="deleteBlog('${blog.id}', '${escapeHtml(blog.title)}')">Delete</button>
           `;
 
-          blogsListDiv.appendChild(item);
+          blogsListDiv.appendChild(card);
         });
       } catch (error) {
         console.error('Error loading blogs:', error);
@@ -199,6 +562,8 @@ Code blocks work as well!
         return;
       }
 
+      loadingOverlay.classList.add('active');
+
       try {
         const response = await fetch(`/api/blogs/${id}`, {
           method: 'DELETE'
@@ -210,6 +575,7 @@ Code blocks work as well!
 
         showMessage('Post deleted successfully!', 'success');
         loadBlogsForManagement();
+        updateStats();
       } catch (error) {
         console.error('Error deleting blog:', error);
         if (error.message && error.message.includes('401')) {
@@ -218,6 +584,8 @@ Code blocks work as well!
         } else {
           showMessage('Failed to delete post. Please try again.', 'error');
         }
+      } finally {
+        loadingOverlay.classList.remove('active');
       }
     }
 
@@ -244,6 +612,7 @@ Code blocks work as well!
 
       submitBtn.disabled = true;
       submitBtn.textContent = 'Publishing...';
+      loadingOverlay.classList.add('active');
 
       try {
         const response = await fetch('/api/blogs', {
@@ -251,14 +620,16 @@ Code blocks work as well!
           body: formData
         });
 
+        const result = await response.json();
+
         if (!response.ok) {
-          throw new Error('Failed to create post');
+          throw new Error(result.error || 'Failed to create post');
         }
 
-        const result = await response.json();
         showMessage('Post published successfully!', 'success');
         blogForm.reset();
         loadBlogsForManagement();
+        updateStats();
 
         // Reset to write mode
         document.querySelector('input[name="contentMethod"][value="write"]').checked = true;
@@ -270,11 +641,12 @@ Code blocks work as well!
           showMessage('Session expired. Please login again.', 'error');
           setTimeout(() => window.location.href = '/login.html', 2000);
         } else {
-          showMessage('Failed to publish post. Please try again.', 'error');
+          showMessage(error.message || 'Failed to publish post. Please try again.', 'error');
         }
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Publish Post';
+        loadingOverlay.classList.remove('active');
       }
     });
 
@@ -290,7 +662,7 @@ Code blocks work as well!
       try {
         const response = await fetch('/api/about');
         const about = await response.json();
-        
+
         document.getElementById('aboutTitle').value = about.title;
         document.getElementById('aboutContent').value = about.content;
       } catch (error) {
@@ -302,12 +674,13 @@ Code blocks work as well!
     // Handle About form submission
     aboutForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const title = document.getElementById('aboutTitle').value;
       const content = document.getElementById('aboutContent').value;
-      
+
       aboutSubmitBtn.disabled = true;
       aboutSubmitBtn.textContent = 'Updating...';
+      loadingOverlay.classList.add('active');
 
       try {
         const response = await fetch('/api/about', {
@@ -331,11 +704,12 @@ Code blocks work as well!
           showMessage('Session expired. Please login again.', 'error');
           setTimeout(() => window.location.href = '/login.html', 2000);
         } else {
-          showMessage('Failed to update About page. Please try again.', 'error');
+          showMessage(error.message || 'Failed to update About page. Please try again.', 'error');
         }
       } finally {
         aboutSubmitBtn.disabled = false;
         aboutSubmitBtn.textContent = 'Update About Page';
+        loadingOverlay.classList.remove('active');
       }
     });
 
@@ -344,7 +718,7 @@ Code blocks work as well!
       try {
         const response = await fetch('/api/auth/status');
         const data = await response.json();
-        
+
         if (!data.authenticated) {
           window.location.href = '/login.html';
         }
@@ -380,6 +754,8 @@ Code blocks work as well!
         return;
       }
 
+      loadingOverlay.classList.add('active');
+
       try {
         const response = await fetch(`/api/newsletter/subscribers/${id}`, {
           method: 'DELETE'
@@ -391,9 +767,12 @@ Code blocks work as well!
 
         showMessage('Subscriber removed successfully!', 'success');
         loadSubscribers();
+        updateStats();
       } catch (error) {
         console.error('Error removing subscriber:', error);
         showMessage('Failed to remove subscriber. Please try again.', 'error');
+      } finally {
+        loadingOverlay.classList.remove('active');
       }
     }
 
@@ -403,32 +782,27 @@ Code blocks work as well!
     // Load newsletter subscribers
     async function loadSubscribers() {
       const subscribersListDiv = document.getElementById('subscribersList');
-      
+
       try {
         const response = await fetch('/api/newsletter/subscribers');
         const subscribers = await response.json();
 
         if (subscribers.length === 0) {
-          subscribersListDiv.innerHTML = '<div class="empty-state">No subscribers yet.</div>';
+          subscribersListDiv.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">📬</div>
+              <p>No subscribers yet.</p>
+            </div>
+          `;
           return;
         }
 
         subscribersListDiv.innerHTML = '';
-        
-        // Add count header
-        const countDiv = document.createElement('div');
-        countDiv.style.padding = '1rem';
-        countDiv.style.background = 'var(--pale-purple)';
-        countDiv.style.borderRadius = '8px';
-        countDiv.style.marginBottom = '1rem';
-        countDiv.style.fontWeight = 'bold';
-        countDiv.style.color = 'var(--deep-purple)';
-        countDiv.textContent = `Total Subscribers: ${subscribers.length}`;
-        subscribersListDiv.appendChild(countDiv);
 
         subscribers.forEach(subscriber => {
-          const item = document.createElement('div');
-          item.className = 'blog-item';
+          const card = document.createElement('div');
+          card.className = 'subscriber-card';
+          card.style.marginBottom = '1rem';
 
           const date = new Date(subscriber.subscribedAt).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -438,15 +812,15 @@ Code blocks work as well!
             minute: '2-digit'
           });
 
-          item.innerHTML = `
-            <div class="blog-item-info">
-              <h3>${escapeHtml(subscriber.email)}</h3>
+          card.innerHTML = `
+            <div class="subscriber-info">
+              <h4>${escapeHtml(subscriber.email)}</h4>
               <p>Subscribed on ${date}</p>
             </div>
-            <button class="delete-btn" onclick="removeSubscriber('${subscriber.id}', '${escapeHtml(subscriber.email)}')">Remove</button>
+            <button class="btn btn-danger" onclick="removeSubscriber('${subscriber.id}', '${escapeHtml(subscriber.email)}')">Remove</button>
           `;
 
-          subscribersListDiv.appendChild(item);
+          subscribersListDiv.appendChild(card);
         });
       } catch (error) {
         console.error('Error loading subscribers:', error);
@@ -459,6 +833,7 @@ Code blocks work as well!
     loadAboutPage();
     loadBlogsForManagement();
     loadSubscribers();
+    updateStats();
   </script>
 </body>
 </html>
