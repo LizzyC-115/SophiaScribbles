@@ -43,6 +43,7 @@ header {
   padding: 1rem 2rem;
   max-width: 1400px;
   margin: 0 auto;
+  gap: 1.5rem;
 }
 
 .logo {
@@ -63,8 +64,7 @@ header {
 .nav-tabs {
   display: flex;
   gap: 0.5rem;
-  flex: 1;
-  justify-content: center;
+  flex: 0 1 auto;
 }
 
 .nav-tabs a {
@@ -100,6 +100,35 @@ header {
   width: 80%;
 }
 
+.search-container {
+  flex: 1 1 auto;
+  max-width: 350px;
+  display: flex;
+  justify-content: center;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.search-input:focus {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
 .admin-login-btn {
   background: rgba(255, 255, 255, 0.15);
   color: white;
@@ -112,6 +141,7 @@ header {
   text-decoration: none;
   display: inline-block;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .admin-login-btn:hover {
@@ -597,6 +627,12 @@ header {
   .nav-tabs a {
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
+  }
+
+  .search-container {
+    flex: 1 1 100%;
+    max-width: 100%;
+    order: 3;
   }
 
   .admin-login-btn {

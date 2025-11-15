@@ -22,6 +22,7 @@ app.use(session({
   }
 }));
 app.use(express.static('public'));
+app.use('/uploads', express.static('uploads'));
 
 // Storage for file uploads
 const storage = multer.diskStorage({
@@ -41,6 +42,35 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+
+// Storage for image uploads
+const imageStorage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const dir = './uploads';
+    try {
+      await fs.access(dir);
+    } catch {
+      await fs.mkdir(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = Date.now() + '-' + file.originalname.replace(/\s+/g, '-').toLowerCase();
+    cb(null, uniqueName);
+  }
+});
+
+const imageUpload = multer({ 
+  storage: imageStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    // Accept images only
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed!'), false);
+    }
+    cb(null, true);
+  }
+});
 
 // Authentication middleware
 function requireAuth(req, res, next) {
@@ -64,6 +94,12 @@ async function initializeStorage() {
     await fs.access('./blogs');
   } catch {
     await fs.mkdir('./blogs', { recursive: true });
+  }
+
+  try {
+    await fs.access('./uploads');
+  } catch {
+    await fs.mkdir('./uploads', { recursive: true });
   }
 
   try {
@@ -200,6 +236,50 @@ app.post('/api/blogs', requireAuth, upload.single('file'), async (req, res) => {
   }
 });
 
+// Update blog post (PROTECTED)
+app.put('/api/blogs/:id', requireAuth, async (req, res) => {
+  try {
+    const { title, author, excerpt, content } = req.body;
+
+    if (!title || !content) {
+      return res.status(400).json({ error: 'Title and content are required' });
+    }
+
+    const data = await fs.readFile('./blogs/metadata.json', 'utf-8');
+    let blogs = JSON.parse(data);
+    const blogIndex = blogs.findIndex(b => b.id === req.params.id);
+
+    if (blogIndex === -1) {
+      return res.status(404).json({ error: 'Blog not found' });
+    }
+
+    const blog = blogs[blogIndex];
+
+    // Update the markdown file
+    await fs.writeFile(`./blogs/${blog.filename}`, content);
+
+    // Update metadata
+    blogs[blogIndex] = {
+      ...blog,
+      title,
+      author: author || blog.author,
+      excerpt: excerpt || content.substring(0, 150).replace(/[#*_]/g, '') + '...',
+      // Keep original date and filename
+    };
+
+    await fs.writeFile('./blogs/metadata.json', JSON.stringify(blogs, null, 2));
+
+    res.json({
+      success: true,
+      message: 'Blog updated successfully',
+      blog: blogs[blogIndex]
+    });
+  } catch (error) {
+    console.error('Error updating blog:', error);
+    res.status(500).json({ error: 'Failed to update blog post' });
+  }
+});
+
 // Delete blog post (PROTECTED)
 app.delete('/api/blogs/:id', requireAuth, async (req, res) => {
   try {
@@ -221,6 +301,29 @@ app.delete('/api/blogs/:id', requireAuth, async (req, res) => {
     res.json({ message: 'Blog deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete blog' });
+  }
+});
+
+// Upload image (PROTECTED - admin only)
+app.post('/api/upload-image', requireAuth, imageUpload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    const imageUrl = `/uploads/${req.file.filename}`;
+    const markdownSyntax = `![Image description](${imageUrl})`;
+
+    res.json({
+      success: true,
+      url: imageUrl,
+      filename: req.file.filename,
+      markdown: markdownSyntax,
+      message: 'Image uploaded successfully'
+    });
+  } catch (error) {
+    console.error('Image upload error:', error);
+    res.status(500).json({ error: error.message || 'Failed to upload image' });
   }
 });
 

@@ -15,6 +15,15 @@
         <a href="#about" data-page="about">About</a>
         <a href="#posts" data-page="posts">Posts</a>
       </nav>
+      <div class="search-container">
+        <input 
+          type="text" 
+          id="searchInput" 
+          class="search-input" 
+          placeholder="🔍 Search posts..."
+          aria-label="Search blog posts"
+        >
+      </div>
       <a href="/login.html" class="admin-login-btn">🔐 Admin</a>
     </div>
   </header>
@@ -49,6 +58,9 @@
     // Router
     const app = document.getElementById('app');
     let currentPage = 'home';
+    let allBlogs = []; // Store all blogs for searching
+    let searchQuery = '';
+    let isAdmin = false; // Track if user is logged in as admin
 
     // Get blog ID from URL
     function getBlogIdFromUrl() {
@@ -57,25 +69,83 @@
     }
 
     // Load all blogs
-    async function loadBlogs() {
+    async function loadBlogs(skipFetch = false) {
       try {
-        const response = await fetch('/api/blogs');
-        const blogs = await response.json();
+        // Fetch blogs if not already loaded or if forced
+        if (!skipFetch || allBlogs.length === 0) {
+          const response = await fetch('/api/blogs');
+          allBlogs = await response.json();
+        }
 
-        if (blogs.length === 0) {
-          app.innerHTML = `
-            <div class="empty-state">
-              <h2>No posts yet</h2>
-              <p>Check back soon for new content, or visit the <a href="/admin">admin page</a> to create your first post!</p>
-            </div>
-          `;
+        // Filter blogs based on search query
+        let filteredBlogs = allBlogs;
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase();
+          filteredBlogs = allBlogs.filter(blog => 
+            blog.title.toLowerCase().includes(query) || 
+            blog.excerpt.toLowerCase().includes(query) ||
+            blog.author.toLowerCase().includes(query)
+          );
+        }
+
+        if (filteredBlogs.length === 0) {
+          if (searchQuery.trim()) {
+            app.innerHTML = `
+              <div class="empty-state">
+                <h2>No posts found</h2>
+                <p>No posts match your search for "${escapeHtml(searchQuery)}". Try a different search term.</p>
+              </div>
+            `;
+          } else {
+            app.innerHTML = `
+              <div class="empty-state">
+                <h2>No posts yet</h2>
+                <p>Check back soon for new content, or visit the <a href="/admin">admin page</a> to create your first post!</p>
+              </div>
+            `;
+          }
           return;
         }
 
         const blogGrid = document.createElement('div');
         blogGrid.className = 'blog-grid';
 
-        blogs.forEach(blog => {
+        // Show search results count if searching
+        if (searchQuery.trim()) {
+          const searchInfo = document.createElement('div');
+          searchInfo.style.marginBottom = '2rem';
+          searchInfo.style.padding = '1rem';
+          searchInfo.style.background = 'var(--pale-purple)';
+          searchInfo.style.borderRadius = '8px';
+          searchInfo.style.color = 'var(--deep-purple)';
+          searchInfo.style.fontWeight = 'bold';
+          searchInfo.textContent = `Found ${filteredBlogs.length} post${filteredBlogs.length !== 1 ? 's' : ''} matching "${searchQuery}"`;
+          
+          const clearBtn = document.createElement('button');
+          clearBtn.textContent = '✕ Clear search';
+          clearBtn.style.marginLeft = '1rem';
+          clearBtn.style.padding = '0.3rem 0.8rem';
+          clearBtn.style.background = 'var(--deep-purple)';
+          clearBtn.style.color = 'white';
+          clearBtn.style.border = 'none';
+          clearBtn.style.borderRadius = '4px';
+          clearBtn.style.cursor = 'pointer';
+          clearBtn.onclick = () => {
+            document.getElementById('searchInput').value = '';
+            searchQuery = '';
+            loadBlogs(true);
+          };
+          searchInfo.appendChild(clearBtn);
+          
+          app.innerHTML = '';
+          app.appendChild(searchInfo);
+          app.appendChild(blogGrid);
+        } else {
+          app.innerHTML = '';
+          app.appendChild(blogGrid);
+        }
+
+        filteredBlogs.forEach(blog => {
           const card = document.createElement('div');
           card.className = 'blog-card';
           card.onclick = () => {
@@ -95,7 +165,10 @@
               <span>${date}</span>
             </div>
             <p class="blog-excerpt">${escapeHtml(blog.excerpt)}</p>
-            <a href="/?post=${blog.id}" class="read-more" onclick="event.stopPropagation()">Read more →</a>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <a href="/?post=${blog.id}" class="read-more" onclick="event.stopPropagation()">Read more →</a>
+              ${isAdmin ? `<button onclick="event.stopPropagation(); window.location.href='/?post=${blog.id}&edit=true'" style="padding: 0.5rem 1rem; background: var(--primary-purple); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">✏️ Edit</button>` : ''}
+            </div>
           `;
 
           blogGrid.appendChild(card);
@@ -110,7 +183,7 @@
     }
 
     // Load single blog post
-    async function loadBlogPost(id) {
+    async function loadBlogPost(id, editMode = false) {
       try {
         const response = await fetch(`/api/blogs/${id}`);
 
@@ -126,25 +199,185 @@
           day: 'numeric'
         });
 
-        app.innerHTML = `
-          <a href="/" class="back-button">← Back to all posts</a>
-          <article class="blog-post">
-            <h1>${escapeHtml(blog.title)}</h1>
-            <div class="blog-meta">
-              <span>By ${escapeHtml(blog.author)}</span>
-              <span>${date}</span>
-            </div>
-            <div class="blog-content">
-              ${blog.content}
-            </div>
-          </article>
-        `;
+        if (editMode && isAdmin) {
+          // Store original values for change detection
+          const originalValues = {
+            title: blog.title,
+            author: blog.author,
+            excerpt: blog.excerpt,
+            content: blog.rawContent
+          };
+
+          // Show edit form
+          app.innerHTML = `
+            <a href="#posts" class="back-button" id="backToPostsBtn">← Back to all posts</a>
+            <article class="blog-post">
+              <h1 style="color: var(--deep-purple); margin-bottom: 2rem;">✏️ Edit Post</h1>
+              <form id="editPostForm" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <div>
+                  <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Title</label>
+                  <input type="text" id="editTitle" value="${escapeHtml(blog.title)}" required
+                    style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1.1rem;">
+                </div>
+                <div>
+                  <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Author</label>
+                  <input type="text" id="editAuthor" value="${escapeHtml(blog.author)}"
+                    style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1rem;">
+                </div>
+                <div>
+                  <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Excerpt (Optional)</label>
+                  <input type="text" id="editExcerpt" value="${escapeHtml(blog.excerpt)}"
+                    style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1rem;">
+                </div>
+                <div>
+                  <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Content (Markdown)</label>
+                  <textarea id="editContent" required
+                    style="width: 100%; min-height: 400px; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1rem; font-family: 'Courier New', monospace;">${escapeHtml(blog.rawContent)}</textarea>
+                </div>
+                <div id="editMessage" style="padding: 1rem; border-radius: 8px; display: none;"></div>
+                <div style="display: flex; gap: 1rem;">
+                  <button type="submit" class="submit-btn" id="saveEditBtn">Save Changes</button>
+                  <button type="button" class="back-button" id="cancelEditBtn" style="padding: 1rem 2.5rem;">Cancel</button>
+                </div>
+              </form>
+            </article>
+          `;
+
+          // Function to check if there are unsaved changes
+          function hasUnsavedChanges() {
+            return (
+              document.getElementById('editTitle').value !== originalValues.title ||
+              document.getElementById('editAuthor').value !== originalValues.author ||
+              document.getElementById('editExcerpt').value !== originalValues.excerpt ||
+              document.getElementById('editContent').value !== originalValues.content
+            );
+          }
+
+          // Handle back button click
+          document.getElementById('backToPostsBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            if (hasUnsavedChanges()) {
+              if (confirm('You have unsaved changes. Do you want to save them before leaving?')) {
+                // Save and then navigate
+                savePostEdit(id).then(() => {
+                  window.history.pushState({}, '', '/#posts');
+                  currentPage = 'posts';
+                  loadBlogs();
+                });
+              } else {
+                // Discard changes and navigate
+                window.history.pushState({}, '', '/#posts');
+                currentPage = 'posts';
+                loadBlogs();
+              }
+            } else {
+              // No changes, just navigate
+              window.history.pushState({}, '', '/#posts');
+              currentPage = 'posts';
+              loadBlogs();
+            }
+          });
+
+          // Handle cancel button click
+          document.getElementById('cancelEditBtn').addEventListener('click', () => {
+            if (hasUnsavedChanges()) {
+              if (confirm('You have unsaved changes. Are you sure you want to cancel?')) {
+                window.history.pushState({}, '', '/#posts');
+                currentPage = 'posts';
+                loadBlogs();
+              }
+            } else {
+              window.history.pushState({}, '', '/#posts');
+              currentPage = 'posts';
+              loadBlogs();
+            }
+          });
+
+          // Handle form submission
+          document.getElementById('editPostForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await savePostEdit(id);
+          });
+        } else {
+          // Show normal post view
+          app.innerHTML = `
+            <a href="#posts" class="back-button">← Back to all posts</a>
+            <article class="blog-post">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                <h1>${escapeHtml(blog.title)}</h1>
+                ${isAdmin ? `<button onclick="loadBlogPost('${id}', true)" style="padding: 0.6rem 1.2rem; background: var(--primary-purple); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">✏️ Edit Post</button>` : ''}
+              </div>
+              <div class="blog-meta">
+                <span>By ${escapeHtml(blog.author)}</span>
+                <span>${date}</span>
+              </div>
+              <div class="blog-content">
+                ${blog.content}
+              </div>
+            </article>
+          `;
+        }
       } catch (error) {
         console.error('Error loading blog post:', error);
         app.innerHTML = `
-          <a href="/" class="back-button">← Back to all posts</a>
+          <a href="#posts" class="back-button">← Back to all posts</a>
           <div class="error">Failed to load blog post. It may have been deleted.</div>
         `;
+      }
+    }
+
+    // Save post edit
+    async function savePostEdit(id) {
+      const saveBtn = document.getElementById('saveEditBtn');
+      const editMessage = document.getElementById('editMessage');
+      
+      const updateData = {
+        title: document.getElementById('editTitle').value,
+        author: document.getElementById('editAuthor').value,
+        excerpt: document.getElementById('editExcerpt').value,
+        content: document.getElementById('editContent').value
+      };
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+      editMessage.style.display = 'none';
+
+      try {
+        const response = await fetch(`/api/blogs/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(updateData)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          editMessage.innerHTML = '✓ Post updated successfully! Redirecting...';
+          editMessage.style.background = '#d4edda';
+          editMessage.style.color = '#155724';
+          editMessage.style.border = '2px solid #c3e6cb';
+          editMessage.style.display = 'block';
+          
+          // Navigate to posts list after a short delay
+          setTimeout(() => {
+            window.history.pushState({}, '', '/#posts');
+            currentPage = 'posts';
+            loadBlogs();
+          }, 1000);
+        } else {
+          throw new Error(data.error || 'Failed to update post');
+        }
+      } catch (error) {
+        console.error('Error updating post:', error);
+        editMessage.innerHTML = '✗ ' + error.message;
+        editMessage.style.background = '#f8d7da';
+        editMessage.style.color = '#721c24';
+        editMessage.style.border = '2px solid #f5c6cb';
+        editMessage.style.display = 'block';
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Changes';
       }
     }
 
@@ -190,10 +423,12 @@
     function init() {
       const blogId = getBlogIdFromUrl();
       const hash = window.location.hash.slice(1) || 'home';
+      const urlParams = new URLSearchParams(window.location.search);
+      const editMode = urlParams.get('edit') === 'true';
 
       if (blogId) {
         currentPage = 'posts';
-        loadBlogPost(blogId);
+        loadBlogPost(blogId, editMode && isAdmin);
       } else if (hash === 'about') {
         currentPage = 'about';
         loadAbout();
@@ -240,9 +475,67 @@
       });
     }
 
+    // Check if user is logged in as admin
+    async function checkAdminStatus() {
+      try {
+        const response = await fetch('/api/auth/status');
+        const data = await response.json();
+        isAdmin = data.authenticated || false;
+        
+        // Update admin button text if logged in
+        if (isAdmin) {
+          const adminBtn = document.querySelector('.admin-login-btn');
+          if (adminBtn && adminBtn.textContent.includes('Admin')) {
+            adminBtn.textContent = '⚙️ Admin Panel';
+            adminBtn.href = '/admin';
+          }
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        isAdmin = false;
+      }
+    }
+
     // Start the app
-    init();
-    updateActiveTab();
+    checkAdminStatus().then(() => {
+      init();
+      updateActiveTab();
+    });
+
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    let searchTimeout;
+
+    searchInput.addEventListener('input', (e) => {
+      // Debounce search to avoid too many updates
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        searchQuery = e.target.value;
+        
+        // Only search if on posts page
+        if (currentPage === 'posts' || searchQuery.trim()) {
+          // Switch to posts page if searching
+          if (searchQuery.trim() && currentPage !== 'posts') {
+            window.location.hash = '#posts';
+            currentPage = 'posts';
+            updateActiveTab();
+          }
+          
+          if (currentPage === 'posts') {
+            loadBlogs(true);
+          }
+        }
+      }, 300); // Wait 300ms after user stops typing
+    });
+
+    // Clear search when changing pages
+    window.addEventListener('hashchange', () => {
+      const hash = window.location.hash.slice(1) || 'home';
+      if (hash !== 'posts' && searchQuery) {
+        searchInput.value = '';
+        searchQuery = '';
+      }
+    });
 
     // Newsletter subscription handler
     const newsletterForm = document.getElementById('newsletterForm');
