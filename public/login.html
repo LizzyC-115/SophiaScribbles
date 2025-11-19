@@ -101,27 +101,39 @@
     }
   </style>
 </head>
-<body>
+<body class="login-page">
   <header>
     <div class="header-container">
       <a href="/" class="logo" aria-label="Go to homepage" title="Go to homepage">Sophia's Scribbles</a>
-      <nav class="nav-tabs" aria-label="Main navigation">
-        <a href="/" aria-label="Go to home page" title="Go to home page">Home</a>
-        <a href="/#about" aria-label="Go to about page" title="Go to about page">About</a>
-        <a href="/#posts" aria-label="Go to posts page" title="Go to posts page">Posts</a>
-      </nav>
-      <div class="search-container">
-        <input 
-          type="text" 
-          class="search-input" 
-          placeholder="🔍 Search posts..."
-          disabled
-          style="opacity: 0.5; cursor: not-allowed;"
-          title="Search available on main site"
-          aria-label="Search disabled on login page"
-        >
+      <div class="header-actions">
+        <div class="search-container">
+          <input 
+            type="text" 
+            class="search-input" 
+            placeholder="Search posts..."
+            disabled
+            style="opacity: 0.5; cursor: not-allowed;"
+            title="Search available on main site"
+            aria-label="Search disabled on login page"
+          >
+        </div>
+        <div class="menu-wrapper" aria-label="Quick actions menu">
+          <button class="menu-toggle" id="menuToggle" aria-haspopup="true" aria-expanded="false" aria-label="Open quick actions menu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+          <div class="menu-dropdown" role="menu">
+            <div class="menu-list" role="none">
+              <a class="menu-item" href="/" role="menuitem" aria-label="Go to home page" title="Go to home page">Home</a>
+              <a class="menu-item" href="/#about" role="menuitem" aria-label="Go to about page" title="Go to about page">About</a>
+              <a class="menu-item" href="/#posts" role="menuitem" aria-label="Go to posts page" title="Go to posts page">Posts</a>
+              <button type="button" id="contrastToggle" class="menu-item" aria-label="Switch to high contrast" title="Switch to high contrast" role="menuitem">Switch to high contrast</button>
+              <span class="menu-item menu-item-static" role="menuitem" aria-disabled="true">Admin Login</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <span class="admin-login-btn" style="opacity: 0.5; cursor: default;" aria-label="Currently on admin login page" title="You are on the admin login page">🔐 Admin</span>
     </div>
   </header>
 
@@ -146,7 +158,7 @@
           autocomplete="current-password">
       </div>
       
-      <button type="submit" class="login-btn" aria-label="Login to admin panel" title="Click to login">Login</button>
+      <button type="submit" id="loginBtn" class="login-btn" aria-label="Login to admin panel" title="Click to login">Login</button>
     </form>
 
     <div class="back-link">
@@ -158,6 +170,45 @@
     const loginForm = document.getElementById('loginForm');
     const loginBtn = document.getElementById('loginBtn');
     const errorMessage = document.getElementById('errorMessage');
+    const menuToggle = document.getElementById('menuToggle');
+    const menuWrapper = document.querySelector('.menu-wrapper');
+    const contrastToggle = document.getElementById('contrastToggle');
+    const HIGH_CONTRAST_KEY = 'highContrastMode';
+
+    function applyHighContrastMode(enabled) {
+      if (enabled) {
+        document.body.classList.add('high-contrast');
+        contrastToggle.textContent = 'Switch to default contrast';
+      } else {
+        document.body.classList.remove('high-contrast');
+        contrastToggle.textContent = 'Switch to high contrast';
+      }
+    }
+
+    const storedContrast = localStorage.getItem(HIGH_CONTRAST_KEY) === 'true';
+    applyHighContrastMode(storedContrast);
+
+    contrastToggle.addEventListener('click', () => {
+      const enabled = !document.body.classList.contains('high-contrast');
+      applyHighContrastMode(enabled);
+      localStorage.setItem(HIGH_CONTRAST_KEY, enabled);
+    });
+
+    if (menuToggle && menuWrapper) {
+      menuToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = menuWrapper.classList.contains('open');
+        menuWrapper.classList.toggle('open', !isOpen);
+        menuToggle.setAttribute('aria-expanded', String(!isOpen));
+      });
+
+      document.addEventListener('click', (event) => {
+        if (!menuWrapper.contains(event.target)) {
+          menuWrapper.classList.remove('open');
+          menuToggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
 
     // Check if already logged in
     fetch('/api/auth/status')

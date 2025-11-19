@@ -4,3 +4,4 @@ node_modules/
 .env
 newsletter-subscribers.json
 uploads/
+SECURITY.md

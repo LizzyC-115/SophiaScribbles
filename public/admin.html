@@ -26,7 +26,7 @@
           aria-label="Search disabled in admin panel"
         >
       </div>
-      <button id="logoutBtn" class="admin-login-btn" style="background: rgba(220, 38, 38, 0.9); border-color: rgba(220, 38, 38, 0.5);" aria-label="Logout from admin panel" title="Click to logout">Logout</button>
+      <button id="logoutBtn" class="admin-login-btn" aria-label="Logout from admin panel" title="Click to logout">Logout</button>
     </div>
   </header>
 
@@ -93,6 +93,12 @@ You can use **bold**, *italic*, [links](https://example.com), and more!"
         <div class="form-group">
           <label for="excerpt">Excerpt (Optional)</label>
           <input type="text" id="excerpt" name="excerpt" placeholder="A short preview of your post...">
+        </div>
+
+        <div class="form-group">
+          <label for="coverImage">Cover Image URL (Optional)</label>
+          <input type="text" id="coverImage" name="coverImage" placeholder="Paste an image URL, e.g. /uploads/cover.jpg">
+          <small style="color: var(--text-light); display: block; margin-top: 0.4rem;">Tip: Upload an image above, then paste the /uploads/... link here to feature it on the homepage.</small>
         </div>
 
         <div class="form-group">

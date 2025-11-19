@@ -6,26 +6,38 @@
   <title>Sophia's Scribbles - A Cozy Corner for Thoughts</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="home-page">
   <header>
     <div class="header-container">
       <a href="/" class="logo" aria-label="Go to homepage" title="Go to homepage">Sophia's Scribbles</a>
-      <nav class="nav-tabs" aria-label="Main navigation">
-        <a href="#home" class="active" data-page="home" aria-label="Go to home page" title="Go to home page">Home</a>
-        <a href="#about" data-page="about" aria-label="Go to about page" title="Go to about page">About</a>
-        <a href="#posts" data-page="posts" aria-label="Go to posts page" title="Go to posts page">Posts</a>
-      </nav>
-      <div class="search-container">
-        <input 
-          type="text" 
-          id="searchInput" 
-          class="search-input" 
-          placeholder="🔍 Search posts..."
-          aria-label="Search blog posts by title, excerpt, or author"
-          title="Search blog posts by title, excerpt, or author"
-        >
+      <div class="header-actions">
+        <div class="search-container">
+          <input 
+            type="text" 
+            id="searchInput" 
+            class="search-input" 
+            placeholder="Search posts..."
+            aria-label="Search blog posts by title, excerpt, or author"
+            title="Search blog posts by title, excerpt, or author"
+          >
+        </div>
+        <div class="menu-wrapper" aria-label="Quick actions menu">
+          <button class="menu-toggle" id="menuToggle" aria-haspopup="true" aria-expanded="false" aria-label="Open quick actions menu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+          <div class="menu-dropdown" role="menu">
+            <div class="menu-list" role="none">
+              <a class="menu-item" href="#home" data-page="home" role="menuitem" aria-label="Go to home page" title="Go to home page">Home</a>
+              <a class="menu-item" href="#about" data-page="about" role="menuitem" aria-label="Go to about page" title="Go to about page">About</a>
+              <a class="menu-item" href="#posts" data-page="posts" role="menuitem" aria-label="Go to posts page" title="Go to posts page">Posts</a>
+              <button type="button" id="contrastToggle" class="menu-item" aria-label="Switch to high contrast" title="Switch to high contrast" role="menuitem">Switch to high contrast</button>
+              <a href="/login.html" class="menu-item" role="menuitem" aria-label="Admin login" title="Login to admin panel">Admin Login</a>
+            </div>
+          </div>
+        </div>
       </div>
-      <a href="/login.html" class="admin-login-btn" aria-label="Admin login" title="Login to admin panel">🔐 Admin</a>
     </div>
   </header>
 
@@ -63,6 +75,21 @@
     let allBlogs = []; // Store all blogs for searching
     let searchQuery = '';
     let isAdmin = false; // Track if user is logged in as admin
+    const welcomeGreetings = [
+      'Welcome',
+      '¡Bienvenido!',
+      'Bienvenue',
+      'Willkommen',
+      'Benvenuto',
+      'Velkommen',
+      '환영합니다',
+      'ようこそ',
+      '欢迎',
+      'Namaste',
+      'Sawasdee',
+      'Karibu'
+    ];
+    let welcomeRotationTimer = null;
 
     // Get blog ID from URL
     function getBlogIdFromUrl() {
@@ -309,6 +336,14 @@
                     title="Enter a short excerpt or summary">
                 </div>
                 <div>
+                  <label for="editCoverImage" style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Cover Image URL (Optional)</label>
+                  <input type="text" id="editCoverImage" value="${escapeHtml(blog.coverImage || '')}"
+                    style="width: 100%; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1rem;"
+                    aria-label="Cover image URL"
+                    title="Paste an image URL for the homepage card">
+                  <small style="display: block; margin-top: 0.5rem; color: var(--text-light);">Use an image uploaded via the admin panel (e.g., /uploads/cover.jpg).</small>
+                </div>
+                <div>
                   <label for="editContent" style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: var(--deep-purple);">Content (Markdown)</label>
                   <textarea id="editContent" required
                     style="width: 100%; min-height: 400px; padding: 0.75rem; border: 2px solid var(--light-purple); border-radius: 8px; font-size: 1rem; font-family: 'Courier New', monospace;"
@@ -467,6 +502,9 @@
                 <span>By ${escapeHtml(blog.author)}</span>
                 <span>${date}</span>
               </div>
+              ${(blog.coverImage || '').trim() ? `<div class="blog-cover-wrapper">
+                <img src="${escapeHtml(blog.coverImage)}" alt="Cover image for ${escapeHtml(blog.title)}" class="blog-cover-image" loading="lazy">
+              </div>` : ''}
               <div class="blog-content">
                 ${blog.content}
               </div>
@@ -491,6 +529,7 @@
         title: document.getElementById('editTitle').value,
         author: document.getElementById('editAuthor').value,
         excerpt: document.getElementById('editExcerpt').value,
+        coverImage: document.getElementById('editCoverImage').value,
         content: document.getElementById('editContent').value
       };
 
@@ -544,39 +583,106 @@
       return div.innerHTML;
     }
 
-    // Load home page with latest posts
+    function getCoverImageMarkup(blog) {
+      const cover = (blog.coverImage || '').trim();
+
+      if (!cover) {
+        return '';
+      }
+
+      const safeTitle = escapeHtml(blog.title);
+      return `<img src="${escapeHtml(cover)}" alt="Cover image for ${safeTitle}" loading="lazy">`;
+    }
+
+    function initWelcomeRotation() {
+      const welcomeWordEl = document.getElementById('welcomeWord');
+
+      if (welcomeRotationTimer) {
+        clearTimeout(welcomeRotationTimer);
+        welcomeRotationTimer = null;
+      }
+
+      if (!welcomeWordEl || !welcomeGreetings.length) {
+        return;
+      }
+
+      let greetingIndex = 0;
+      let charIndex = 0;
+      let isDeleting = false;
+
+      const type = () => {
+        const word = welcomeGreetings[greetingIndex];
+
+        if (!isDeleting) {
+          welcomeWordEl.textContent = word.slice(0, charIndex + 1);
+          charIndex++;
+
+          if (charIndex === word.length) {
+            isDeleting = true;
+            welcomeRotationTimer = setTimeout(type, 1800);
+            return;
+          }
+        } else {
+          welcomeWordEl.textContent = word.slice(0, Math.max(charIndex - 1, 0));
+          charIndex--;
+
+          if (charIndex === 0) {
+            isDeleting = false;
+            greetingIndex = (greetingIndex + 1) % welcomeGreetings.length;
+          }
+        }
+
+        const delay = isDeleting ? 80 : 130;
+        welcomeRotationTimer = setTimeout(type, delay);
+      };
+
+      type();
+    }
+
+    // Load home page with the two latest posts
     async function loadHome() {
       try {
-        // Fetch all blogs to get the latest 3
+        // Fetch all blogs to get the latest 2 entries
         const response = await fetch('/api/blogs');
         const blogs = await response.json();
-        const latestBlogs = blogs.slice(0, 3); // Get first 3 (already sorted by date)
+        const latestBlogs = blogs.slice(0, 2); // take the first 2 (already date-sorted)
 
         let latestPostsHTML = '';
         if (latestBlogs.length > 0) {
+          const previewCards = latestBlogs.map(blog => {
+            const date = new Date(blog.date).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+            const excerpt = blog.excerpt ? escapeHtml(blog.excerpt) : 'Tap to read this cozy story.';
+
+            return `
+              <article class="blog-card blog-card--preview" role="article" onclick="window.location.href='/?post=${blog.id}'">
+                ${blog.coverImage ? `
+                <div class="blog-card-image">
+                  ${getCoverImageMarkup(blog)}
+                  <div class="blog-card-overlay">
+                    <p>${excerpt}</p>
+                    <button type="button" class="read-more-button" onclick="event.stopPropagation(); window.location.href='/?post=${blog.id}'">Read more →</button>
+                  </div>
+                </div>` : `
+                <div class="blog-card-preview-only">
+                  <p>${excerpt}</p>
+                  <button type="button" class="read-more-button" onclick="event.stopPropagation(); window.location.href='/?post=${blog.id}'">Read more →</button>
+                </div>`}
+                <h3 class="blog-card-title">${escapeHtml(blog.title)}</h3>
+                <p class="blog-card-meta">By ${escapeHtml(blog.author)} • ${date}</p>
+              </article>
+            `;
+          }).join('');
+
           latestPostsHTML = `
             <section style="margin-top: 3rem;">
               <h2 style="font-size: 2rem; color: var(--deep-purple); margin-bottom: 1rem; text-align: center;">Latest Posts</h2>
               <hr style="border: none; border-top: 2px solid var(--light-purple); max-width: 200px; margin: 0 auto 2rem;">
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; max-width: 1200px; margin: 0 auto;">
-                ${latestBlogs.map(blog => {
-                  const date = new Date(blog.date).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  });
-                  return `
-                    <article class="blog-card" onclick="window.location.href='/?post=${blog.id}'" style="cursor: pointer;" role="article">
-                      <h3 style="color: var(--deep-purple); margin-bottom: 0.75rem; font-size: 1.3rem;">${escapeHtml(blog.title)}</h3>
-                      <div class="blog-meta" style="margin-bottom: 1rem;">
-                        <span>By ${escapeHtml(blog.author)}</span>
-                        <span>${date}</span>
-                      </div>
-                      <p class="blog-excerpt" style="margin-bottom: 1rem;">${escapeHtml(blog.excerpt)}</p>
-                      <a href="/?post=${blog.id}" class="read-more" onclick="event.stopPropagation()" aria-label="Read full post: ${escapeHtml(blog.title)}" title="Read the full post">Read more →</a>
-                    </article>
-                  `;
-                }).join('')}
+              <div class="home-preview-grid">
+                ${previewCards}
               </div>
               <div style="text-align: center; margin-top: 2rem;">
                 <a href="#posts" style="display: inline-block; padding: 1rem 2rem; background: var(--primary-purple); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: all 0.3s ease;" 
@@ -593,19 +699,29 @@
 
         app.innerHTML = `
           <div style="text-align: center; padding: 4rem 2rem 2rem; color: var(--text-light);">
-            <h1 style="font-size: 2.5rem; color: var(--deep-purple); margin-bottom: 1rem;">Welcome to Sophia's Scribbles</h1>
+            <h1 style="font-size: 2.5rem; color: var(--deep-purple); margin-bottom: 0.5rem;">
+              <span id="welcomeWord" aria-live="polite">Welcome</span>
+              <span style="margin: 0 0.4rem;">to</span>
+              Sophia's Scribbles
+            </h1>
             <p style="font-size: 1.2rem; font-style: italic;">A cozy corner for thoughts, stories, and musings</p>
           </div>
           ${latestPostsHTML}
         `;
+        initWelcomeRotation();
       } catch (error) {
         console.error('Error loading home page:', error);
         app.innerHTML = `
           <div style="text-align: center; padding: 4rem 2rem; color: var(--text-light);">
-            <h1 style="font-size: 2.5rem; color: var(--deep-purple); margin-bottom: 1rem;">Welcome to Sophia's Scribbles</h1>
+            <h1 style="font-size: 2.5rem; color: var(--deep-purple); margin-bottom: 0.5rem;">
+              <span id="welcomeWord" aria-live="polite">Welcome</span>
+              <span style="margin: 0 0.4rem;">to</span>
+              Sophia's Scribbles
+            </h1>
             <p style="font-size: 1.2rem; font-style: italic;">A cozy corner for thoughts, stories, and musings</p>
           </div>
         `;
+        initWelcomeRotation();
       }
     }
 
@@ -656,6 +772,46 @@
     // Handle browser back/forward and hash changes
     window.addEventListener('popstate', init);
     window.addEventListener('hashchange', init);
+
+    const menuToggle = document.getElementById('menuToggle');
+    const menuWrapper = document.querySelector('.menu-wrapper');
+    const contrastToggle = document.getElementById('contrastToggle');
+    const HIGH_CONTRAST_KEY = 'highContrastMode';
+
+    function applyHighContrastMode(enabled) {
+      if (enabled) {
+        document.body.classList.add('high-contrast');
+        contrastToggle.textContent = 'Switch to default contrast';
+      } else {
+        document.body.classList.remove('high-contrast');
+        contrastToggle.textContent = 'Switch to high contrast';
+      }
+    }
+
+    const storedContrast = localStorage.getItem(HIGH_CONTRAST_KEY) === 'true';
+    applyHighContrastMode(storedContrast);
+
+    contrastToggle.addEventListener('click', () => {
+      const enabled = !document.body.classList.contains('high-contrast');
+      applyHighContrastMode(enabled);
+      localStorage.setItem(HIGH_CONTRAST_KEY, enabled);
+    });
+
+    if (menuToggle && menuWrapper) {
+      menuToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = menuWrapper.classList.contains('open');
+        menuWrapper.classList.toggle('open', !isOpen);
+        menuToggle.setAttribute('aria-expanded', String(!isOpen));
+      });
+
+      document.addEventListener('click', (event) => {
+        if (!menuWrapper.contains(event.target)) {
+          menuWrapper.classList.remove('open');
+          menuToggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
 
     // Handle tab navigation
     document.querySelectorAll('.nav-tabs a').forEach(link => {

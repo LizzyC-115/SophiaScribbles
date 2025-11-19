@@ -1,5 +1,3 @@
-# The Magic of Morning Routines
-
 There's something truly special about the early morning hours, when the world is still quiet and the day feels full of possibility. Over the past few months, I've been experimenting with different morning routines, and I wanted to share what I've discovered.
 
 ## My Current Morning Ritual

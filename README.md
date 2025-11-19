@@ -159,6 +159,7 @@ Currently, the admin panel is open to anyone. To add password protection, consid
 - **Backup your blogs**: The `blogs/` folder contains all your posts - back it up regularly!
 - **Preview markdown**: Use the example in the admin panel as a guide for formatting
 - **Images**: You can use image URLs in your markdown: `![Alt text](https://example.com/image.jpg)`
+- **HEIC cover photos**: If your camera saves images as HEIC/HEIF, run `python convert_heic.py /path/to/your/files` (requires `pip install pillow pillow-heif`) to batch-convert them to JPG before uploading.
 - **Keep it simple**: The beauty of this blog is its simplicity - perfect for focused writing
 
 ## Troubleshooting

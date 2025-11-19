@@ -4,6 +4,7 @@ const session = require('express-session');
 const path = require('path');
 const fs = require('fs').promises;
 const multer = require('multer');
+const bcrypt = require('bcrypt');
 const { marked } = require('marked');
 
 const app = express();
@@ -78,6 +79,18 @@ function requireAuth(req, res, next) {
     return next();
   }
   res.status(401).json({ error: 'Unauthorized. Please log in.' });
+}
+
+function normalizeCoverImage(input) {
+  if (!input) return '';
+  const value = input.trim();
+
+  const markdownMatch = value.match(/!\[[^\]]*\]\(([^)]+)\)/);
+  if (markdownMatch && markdownMatch[1]) {
+    return markdownMatch[1].trim();
+  }
+
+  return value;
 }
 
 // Check if user is authenticated
@@ -162,16 +175,39 @@ app.get('/api/blogs/:id', async (req, res) => {
   }
 });
 
+// Determine if the stored password is hashed (bcrypt hash starts with $2)
+async function verifyAdminPassword(inputPassword) {
+  const storedPassword = process.env.ADMIN_PASSWORD || '';
+
+  if (storedPassword.startsWith('$2')) {
+    try {
+      return await bcrypt.compare(inputPassword, storedPassword);
+    } catch (error) {
+      console.error('Password comparison failed:', error);
+      return false;
+    }
+  }
+
+  return inputPassword === storedPassword;
+}
+
 // Login endpoint
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
-  
-  if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
-    req.session.isAdmin = true;
-    req.session.username = username;
-    res.json({ success: true, message: 'Login successful' });
-  } else {
+
+  try {
+    const passwordValid = await verifyAdminPassword(password);
+
+    if (username === process.env.ADMIN_USERNAME && passwordValid) {
+      req.session.isAdmin = true;
+      req.session.username = username;
+      return res.json({ success: true, message: 'Login successful' });
+    }
+
     res.status(401).json({ success: false, error: 'Invalid credentials' });
+  } catch (error) {
+    console.error('Login failed:', error);
+    res.status(500).json({ success: false, error: 'Login failed. Please try again.' });
   }
 });
 
@@ -197,7 +233,7 @@ app.get('/api/auth/status', (req, res) => {
 // Create new blog post (PROTECTED)
 app.post('/api/blogs', requireAuth, upload.single('file'), async (req, res) => {
   try {
-    const { title, author, excerpt } = req.body;
+    const { title, author, excerpt, coverImage } = req.body;
     let content = '';
     let filename = '';
 
@@ -217,13 +253,16 @@ app.post('/api/blogs', requireAuth, upload.single('file'), async (req, res) => {
     const data = await fs.readFile('./blogs/metadata.json', 'utf-8');
     const blogs = JSON.parse(data);
 
+    const normalizedCover = normalizeCoverImage(coverImage);
+
     const newBlog = {
       id: Date.now().toString(),
       title,
       author: author || 'Anonymous',
       date: new Date().toISOString(),
       excerpt: excerpt || content.substring(0, 150).replace(/[#*_]/g, '') + '...',
-      filename
+      filename,
+      coverImage: normalizedCover
     };
 
     blogs.push(newBlog);
@@ -239,7 +278,7 @@ app.post('/api/blogs', requireAuth, upload.single('file'), async (req, res) => {
 // Update blog post (PROTECTED)
 app.put('/api/blogs/:id', requireAuth, async (req, res) => {
   try {
-    const { title, author, excerpt, content } = req.body;
+    const { title, author, excerpt, content, coverImage } = req.body;
 
     if (!title || !content) {
       return res.status(400).json({ error: 'Title and content are required' });
@@ -259,11 +298,14 @@ app.put('/api/blogs/:id', requireAuth, async (req, res) => {
     await fs.writeFile(`./blogs/${blog.filename}`, content);
 
     // Update metadata
+    const normalizedCover = coverImage !== undefined ? normalizeCoverImage(coverImage) : undefined;
+
     blogs[blogIndex] = {
       ...blog,
       title,
       author: author || blog.author,
       excerpt: excerpt || content.substring(0, 150).replace(/[#*_]/g, '') + '...',
+      coverImage: normalizedCover !== undefined ? normalizedCover : (blog.coverImage || ''),
       // Keep original date and filename
     };
 
