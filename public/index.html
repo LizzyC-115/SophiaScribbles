@@ -679,8 +679,8 @@
 
         app.innerHTML = `
           <div style="text-align: center; padding: 4rem 2rem 2rem; color: var(--text-light);">
-            <h1 style="font-size: 2.5rem; color: var(--deep-purple); margin-bottom: 0.5rem;">
-              <span id="welcomeWord" aria-live="polite">Welcome</span>
+            <h1 style="font-size: 2.5rem; color: var(--deep-purple); margin-bottom: 0.5rem; min-height: 1.3em;">
+              <span id="welcomeWord" style="display: inline-block; min-width: 140px; text-align: right;" aria-live="polite">Welcome</span>
               <span style="margin: 0 0.4rem;">to</span>
               Sophia's Scribbles
             </h1>
@@ -693,8 +693,8 @@
         console.error('Error loading home page:', error);
         app.innerHTML = `
           <div style="text-align: center; padding: 4rem 2rem; color: var(--text-light);">
-            <h1 style="font-size: 2.5rem; color: var(--deep-purple); margin-bottom: 0.5rem;">
-              <span id="welcomeWord" aria-live="polite">Welcome</span>
+            <h1 style="font-size: 2.5rem; color: var(--deep-purple); margin-bottom: 0.5rem; min-height: 1.3em;">
+              <span id="welcomeWord" style="display: inline-block; min-width: 140px; text-align: right;" aria-live="polite">Welcome</span>
               <span style="margin: 0 0.4rem;">to</span>
               Sophia's Scribbles
             </h1>
@@ -918,5 +918,6 @@
     });
 
   </script>
+  <script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>
