@@ -154,12 +154,6 @@ Code blocks work as well!
       </div>
     </div>
 
-    <div class="blog-list" style="margin-top: 2rem;">
-      <h2>📬 Newsletter Subscribers</h2>
-      <div id="subscribersList">
-        <div class="loading">Loading subscribers...</div>
-      </div>
-    </div>
   </div>
 
   <script>
@@ -501,91 +495,10 @@ Code blocks work as well!
       }
     });
 
-    // Remove subscriber
-    async function removeSubscriber(id, email) {
-      if (!confirm(`Are you sure you want to remove "${email}" from the newsletter?`)) {
-        return;
-      }
-
-      try {
-        const response = await fetch(`/api/newsletter/subscribers/${id}`, {
-          method: 'DELETE'
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to remove subscriber');
-        }
-
-        showMessage('Subscriber removed successfully!', 'success');
-        loadSubscribers();
-      } catch (error) {
-        console.error('Error removing subscriber:', error);
-        showMessage('Failed to remove subscriber. Please try again.', 'error');
-      }
-    }
-
-    // Make removeSubscriber available globally
-    window.removeSubscriber = removeSubscriber;
-
-    // Load newsletter subscribers
-    async function loadSubscribers() {
-      const subscribersListDiv = document.getElementById('subscribersList');
-      
-      try {
-        const response = await fetch('/api/newsletter/subscribers');
-        const subscribers = await response.json();
-
-        if (subscribers.length === 0) {
-          subscribersListDiv.innerHTML = '<div class="empty-state">No subscribers yet.</div>';
-          return;
-        }
-
-        subscribersListDiv.innerHTML = '';
-        
-        // Add count header
-        const countDiv = document.createElement('div');
-        countDiv.style.padding = '1rem';
-        countDiv.style.background = 'var(--pale-purple)';
-        countDiv.style.borderRadius = '8px';
-        countDiv.style.marginBottom = '1rem';
-        countDiv.style.fontWeight = 'bold';
-        countDiv.style.color = 'var(--deep-purple)';
-        countDiv.textContent = `Total Subscribers: ${subscribers.length}`;
-        subscribersListDiv.appendChild(countDiv);
-
-        subscribers.forEach(subscriber => {
-          const item = document.createElement('div');
-          item.className = 'blog-item';
-
-          const date = new Date(subscriber.subscribedAt).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          });
-
-          item.innerHTML = `
-            <div class="blog-item-info">
-              <h3>${escapeHtml(subscriber.email)}</h3>
-              <p>Subscribed on ${date}</p>
-            </div>
-            <button class="delete-btn" onclick="removeSubscriber('${subscriber.id}', '${escapeHtml(subscriber.email)}')">Remove</button>
-          `;
-
-          subscribersListDiv.appendChild(item);
-        });
-      } catch (error) {
-        console.error('Error loading subscribers:', error);
-        subscribersListDiv.innerHTML = '<div class="error">Failed to load subscribers.</div>';
-      }
-    }
-
     // Initialize
     checkAuth();
     loadAboutPage();
     loadBlogsForManagement();
-    loadSubscribers();
   </script>
 </body>
 </html>

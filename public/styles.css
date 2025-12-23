@@ -315,19 +315,19 @@ header {
 
 .search-container {
   flex: 1 1 auto;
-  max-width: 280px;
+  max-width: 560px;
   display: flex;
   justify-content: center;
 }
 
 .search-input {
   width: 100%;
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1.25rem;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 20px;
+  border-radius: 25px;
   background: rgba(255, 255, 255, 0.15);
   color: white;
-  font-size: 0.9rem;
+  font-size: 1rem;
   transition: all 0.3s ease;
   outline: none;
 }
@@ -412,6 +412,9 @@ header {
   text-align: left;
   cursor: pointer;
   transition: background 0.2s ease;
+  font-size: 1rem;
+  font-family: inherit;
+  box-sizing: border-box;
 }
 
 .menu-item + .menu-item {
@@ -829,9 +832,10 @@ header {
   justify-content: center;
 }
 
+.newsletter-form input[type="text"],
 .newsletter-form input[type="email"] {
   flex: 1;
-  min-width: 250px;
+  min-width: 200px;
   padding: 1rem 1.5rem;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50px;
@@ -840,6 +844,7 @@ header {
   transition: all 0.3s ease;
 }
 
+.newsletter-form input[type="text"]:focus,
 .newsletter-form input[type="email"]:focus {
   outline: none;
   border-color: white;
@@ -974,6 +979,7 @@ select:focus {
     flex-direction: column;
   }
 
+  .newsletter-form input[type="text"],
   .newsletter-form input[type="email"] {
     width: 100%;
   }

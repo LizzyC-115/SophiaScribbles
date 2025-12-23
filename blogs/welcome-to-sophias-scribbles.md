@@ -1,5 +1,3 @@
-# Welcome to Sophia's Scribbles!
-
 Hello, dear reader! I'm so glad you've found your way to my little corner of the internet. This blog is where I'll be sharing my thoughts, stories, and musings on life, creativity, and everything in between.
 
 ## What to Expect
