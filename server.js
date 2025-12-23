@@ -1,28 +1,78 @@
 require('dotenv').config();
 const express = require('express');
-const session = require('express-session');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs').promises;
 const multer = require('multer');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { marked } = require('marked');
-const { db, bucket } = require('./firebaseClient');
+
+// Simple token-based auth for serverless (works across function invocations)
+const AUTH_SECRET = process.env.SESSION_SECRET || 'your-secret-key-change-this';
+
+function generateAuthToken(username) {
+  const data = `${username}:${Date.now()}`;
+  const hmac = crypto.createHmac('sha256', AUTH_SECRET);
+  hmac.update(data);
+  return `${Buffer.from(data).toString('base64')}.${hmac.digest('hex')}`;
+}
+
+function verifyAuthToken(token) {
+  if (!token) return null;
+  try {
+    const [dataB64, signature] = token.split('.');
+    if (!dataB64 || !signature) return null;
+    
+    const data = Buffer.from(dataB64, 'base64').toString();
+    const hmac = crypto.createHmac('sha256', AUTH_SECRET);
+    hmac.update(data);
+    const expectedSig = hmac.digest('hex');
+    
+    if (signature !== expectedSig) return null;
+    
+    const [username, timestamp] = data.split(':');
+    const age = Date.now() - parseInt(timestamp);
+    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+    
+    if (age > maxAge) return null;
+    return username;
+  } catch {
+    return null;
+  }
+}
+
+let db, bucket, firebaseError;
+try {
+  const firebase = require('./firebaseClient');
+  db = firebase.db;
+  bucket = firebase.bucket;
+} catch (error) {
+  firebaseError = error.message;
+  console.error('Firebase initialization error:', error.message);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    firebase: db ? 'connected' : 'not connected',
+    error: firebaseError || null,
+    env: {
+      hasServiceAccount: !!process.env.FIREBASE_SERVICE_ACCOUNT,
+      hasStorageBucket: !!process.env.FIREBASE_STORAGE_BUCKET,
+      serviceAccountStart: process.env.FIREBASE_SERVICE_ACCOUNT ? process.env.FIREBASE_SERVICE_ACCOUNT.substring(0, 20) : null
+    }
+  });
+});
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key-change-this',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { 
-    secure: false, // Set to true if using HTTPS
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
+app.use(cookieParser(AUTH_SECRET));
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
@@ -42,7 +92,10 @@ const imageUpload = multer({
 
 // Authentication middleware
 function requireAuth(req, res, next) {
-  if (req.session && req.session.isAdmin) {
+  const token = req.signedCookies.authToken;
+  const username = verifyAuthToken(token);
+  if (username) {
+    req.username = username;
     return next();
   }
   res.status(401).json({ error: 'Unauthorized. Please log in.' });
@@ -60,9 +113,12 @@ function normalizeCoverImage(input) {
   return value;
 }
 
-// Check if user is authenticated
+// Check if user is authenticated (for page redirects)
 function isAuthenticated(req, res, next) {
-  if (req.session && req.session.isAdmin) {
+  const token = req.signedCookies.authToken;
+  const username = verifyAuthToken(token);
+  if (username) {
+    req.username = username;
     return next();
   }
   res.redirect('/login.html');
@@ -147,8 +203,14 @@ app.post('/api/login', async (req, res) => {
     const passwordValid = await verifyAdminPassword(password);
 
     if (username === process.env.ADMIN_USERNAME && passwordValid) {
-      req.session.isAdmin = true;
-      req.session.username = username;
+      const token = generateAuthToken(username);
+      res.cookie('authToken', token, {
+        signed: true,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      });
       return res.json({ success: true, message: 'Login successful' });
     }
 
@@ -161,18 +223,16 @@ app.post('/api/login', async (req, res) => {
 
 // Logout endpoint
 app.post('/api/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to logout' });
-    }
-    res.json({ success: true, message: 'Logged out successfully' });
-  });
+  res.clearCookie('authToken');
+  res.json({ success: true, message: 'Logged out successfully' });
 });
 
 // Check authentication status
 app.get('/api/auth/status', (req, res) => {
-  if (req.session && req.session.isAdmin) {
-    res.json({ authenticated: true, username: req.session.username });
+  const token = req.signedCookies.authToken;
+  const username = verifyAuthToken(token);
+  if (username) {
+    res.json({ authenticated: true, username });
   } else {
     res.json({ authenticated: false });
   }

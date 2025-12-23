@@ -798,9 +798,41 @@
       link.addEventListener('click', (e) => {
         const page = link.getAttribute('data-page');
         
-        // Clear any blog post query params
-        if (window.location.search) {
-          window.history.pushState({}, '', '/');
+        // Clear any blog post query params and navigate properly
+        if (window.location.search || currentPage === 'post') {
+          e.preventDefault();
+          const targetHash = link.getAttribute('href');
+          window.history.pushState({}, '', '/' + targetHash);
+          currentPage = page;
+          init();
+        }
+        
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Update active state
+        updateActiveTab();
+      });
+    });
+
+    // Handle menu item navigation (for dropdown menu)
+    document.querySelectorAll('.menu-item[data-page]').forEach(link => {
+      link.addEventListener('click', (e) => {
+        const page = link.getAttribute('data-page');
+        
+        // Clear any blog post query params and navigate properly
+        if (window.location.search || currentPage === 'post') {
+          e.preventDefault();
+          const targetHash = link.getAttribute('href');
+          window.history.pushState({}, '', '/' + targetHash);
+          currentPage = page;
+          init();
+        }
+        
+        // Close the menu
+        if (menuWrapper) {
+          menuWrapper.classList.remove('open');
+          menuToggle.setAttribute('aria-expanded', 'false');
         }
         
         // Scroll to top
